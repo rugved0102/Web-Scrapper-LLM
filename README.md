@@ -1,6 +1,8 @@
-# 🧠 InsightEngine - AI-Powered Multi-Website Analysis
+# InsightEngine - AI-Powered Multi-Website Analysis
 
-## 📖 Table of Contents
+> Created by [Rugved](https://github.com/rugved0102)
+
+## Table of Contents
 - [Overview](#overview)
 - [Features](#features)
 - [Technology Stack](#technology-stack)
@@ -23,7 +25,7 @@
 
 ---
 
-## 🌟 Overview
+## Overview
 
 **InsightEngine** is an intelligent web application that analyzes multiple websites simultaneously and generates AI-powered insights based on your chosen purpose. Think of it as a smart assistant that reads websites for you, compares their content, and provides actionable recommendations.
 
@@ -40,7 +42,7 @@ InsightEngine automates this entire process using AI.
 
 ---
 
-## ✨ Features
+## Features
 
 ### 1. **Multi-URL Input System**
 - Add multiple website URLs (as many as you need)
@@ -64,7 +66,7 @@ Choose from 6 different analysis modes:
 - Progress tracking during scraping
 
 ### 4. **AI-Powered Insight Generation**
-- Uses Google Gemini 2.5 Flash (via Lovable AI)
+- Uses Groq API with Llama 3.1 models
 - Context-aware analysis based on your purpose
 - Generates:
   - Executive summaries
@@ -83,7 +85,7 @@ Choose from 6 different analysis modes:
 
 ---
 
-## 🛠 Technology Stack
+## Technology Stack
 
 ### Frontend
 - **React 18**: UI library
@@ -95,20 +97,21 @@ Choose from 6 different analysis modes:
 - **React Router**: Navigation
 - **Zod**: URL validation
 
-### Backend (Lovable Cloud)
+### Backend
 - **Supabase**: Backend platform
-- **Edge Functions**: Serverless functions
-- **Deno**: Runtime for edge functions
-- **Lovable AI Gateway**: AI model access
+- **Edge Functions**: Serverless functions (Deno runtime)
+- **PostgreSQL**: Database with pgvector extension
 
 ### AI/ML
-- **Google Gemini 2.5 Flash**: Language model
+- **Groq API**: Fast LLM inference
+- **Llama 3.1**: Language model (8B & 70B variants)
+- **Xenova Transformers**: Semantic embeddings (all-MiniLM-L6-v2)
 - **Web Scraping**: Cheerio-like parsing
 - **Content Extraction**: HTML-to-text processing
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before you begin, ensure you have:
 
@@ -123,17 +126,17 @@ Before you begin, ensure you have:
    - Download from [git-scm.com](https://git-scm.com/)
    - Verify: `git --version`
 
-4. **A Lovable Account**
-   - This project uses Lovable Cloud (pre-configured)
-   - No additional setup needed!
+4. **A Groq Account** (Free)
+   - Sign up at [console.groq.com](https://console.groq.com)
+   - Get free API key for LLM access
 
 ---
 
-## 🚀 Setup Instructions
+## Setup Instructions
 
 ### Local Development Setup
 
-This project can run **completely locally** without dependency on Lovable Cloud services. It uses **Groq's free-tier API** for LLM capabilities.
+This project runs **completely locally** using **Groq's free-tier API** for LLM capabilities and Supabase for backend infrastructure.
 
 #### Step 1: Clone the Repository
 
@@ -161,7 +164,7 @@ cp .env.example .env
 2. **Edit `.env` and configure the following:**
 
 ```env
-# LLM Provider (choose one: "groq", "lovable", or "mock")
+# LLM Provider (choose one: "groq", "openai", or "mock")
 LLM_PROVIDER=groq
 
 # Groq API Key (get free key at https://console.groq.com)
@@ -277,11 +280,11 @@ supabase secrets set LLM_PROVIDER=groq
 supabase secrets set GROQ_MODEL=llama3-8b-8192
 ```
 
-**Note:** In Lovable Cloud, secrets are managed through the UI (Settings → Secrets).
+**Note:** You can also set secrets in the Supabase Dashboard under Project Settings → Edge Functions.
 
 ---
 
-## ▶️ How to Run
+## How to Run
 
 ### Development Mode
 
@@ -387,7 +390,7 @@ You can deploy the frontend to:
 
 ---
 
-## 📱 How to Use
+## How to Use
 
 ### Step-by-Step Usage Guide
 
@@ -427,7 +430,7 @@ Results are organized into sections:
 
 ---
 
-## 🔧 Feature Details
+## Feature Details
 
 ### 1. URL Input Component (`URLInput.tsx`)
 
@@ -560,7 +563,7 @@ const [status, setStatus] = useState<"scraping" | "analyzing" | "complete">("scr
 - Receives URLs and purpose from frontend
 - Scrapes each website
 - Extracts clean text content
-- Sends to Lovable AI Gateway
+- Sends to Groq API for analysis
 - Returns structured insights
 
 **Scraping Process**:
@@ -574,14 +577,14 @@ const [status, setStatus] = useState<"scraping" | "analyzing" | "complete">("scr
 
 **AI Integration**:
 ```typescript
-const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+    Authorization: `Bearer ${GROQ_API_KEY}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "google/gemini-2.5-flash",
+    model: "llama-3.1-8b-instant",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: prompt }
@@ -611,7 +614,7 @@ The backend generates a dynamic system prompt based on the selected purpose:
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ### High-Level Flow
 
@@ -640,11 +643,11 @@ The backend generates a dynamic system prompt based on the selected purpose:
 │   - AI prompt generation       │
 └──────┬─────────────────────────┘
        │
-       │ 3. POST to Lovable AI Gateway
+       │ 3. POST to Groq API
        │
        ▼
 ┌────────────────────────────┐
-│   Gemini 2.5 Flash (AI)    │
+│   Groq API (Llama 3.1)     │
 │   - Content analysis       │
 │   - Insight generation     │
 └──────┬─────────────────────┘
@@ -663,14 +666,14 @@ The backend generates a dynamic system prompt based on the selected purpose:
 1. **User Input** → URLs + Purpose
 2. **Frontend** → Validates and sends to backend
 3. **Backend** → Scrapes websites
-4. **Backend** → Calls AI with scraped content
-5. **AI** → Generates insights
+4. **Backend** → Calls Groq API with scraped content
+5. **Groq AI** → Generates insights
 6. **Backend** → Returns JSON to frontend
 7. **Frontend** → Displays formatted results
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 insightengine/
@@ -712,7 +715,7 @@ insightengine/
 
 ---
 
-## 🎨 Design System
+## Design System
 
 ### Color Palette
 
@@ -770,8 +773,8 @@ Edit your `.env` file and change `LLM_PROVIDER`:
 # Use Groq (recommended for local development)
 LLM_PROVIDER=groq
 
-# Use Lovable AI (if you're in Lovable Cloud)
-LLM_PROVIDER=lovable
+# Use OpenAI (if you add OpenAI support)
+LLM_PROVIDER=openai
 
 # Use mock mode (no API calls, for testing)
 LLM_PROVIDER=mock
@@ -781,8 +784,8 @@ LLM_PROVIDER=mock
 
 | Provider | Cost | Speed | Setup | Best For |
 |----------|------|-------|-------|----------|
-| **Groq** | Free tier + paid | Very fast | API key required | Local dev, production |
-| **Lovable AI** | Pay-as-you-go | Fast | Pre-configured in Cloud | Lovable Cloud users |
+| **Groq** | Free tier + paid | Very fast | API key required | Production, local dev |
+| **OpenAI** | Pay-as-you-go | Fast | API key required | High-quality insights |
 | **Mock** | Free | Instant | No setup | Testing, demos |
 
 ### Custom LLM Models
@@ -818,7 +821,7 @@ else if (LLM_PROVIDER === "openai") {
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -838,15 +841,16 @@ else if (LLM_PROVIDER === "openai") {
 **Solution**:
 - Wait a few minutes before trying again
 - Reduce the number of URLs
-- Consider upgrading your Lovable plan
+- Groq free tier has generous limits - should be sufficient for most use cases
 
-#### 3. **"Payment Required" (402 Error)**
+#### 3. **"Unauthorized" (401 Error)**
 
-**Cause**: Lovable AI credits depleted
+**Cause**: Invalid or expired Groq API key
 
 **Solution**:
-- Go to Settings → Workspace → Usage
-- Add credits to your Lovable workspace
+- Verify your API key is correct in `.env`
+- Generate a new key at [console.groq.com](https://console.groq.com)
+- Update Supabase secrets if deployed
 
 #### 4. **Port Already in Use**
 
@@ -904,7 +908,7 @@ supabase functions deploy analyze-websites
 
 ---
 
-## 🤔 FAQ
+## FAQ
 
 ### Q: How many URLs can I analyze at once?
 **A**: There's no hard limit, but we recommend 3-5 URLs for optimal performance and reasonable processing time.
@@ -936,8 +940,8 @@ supabase functions deploy analyze-websites
 ### Q: What if a website doesn't load?
 **A**: The app will skip that URL and continue analyzing others. You'll see an error in the console.
 
-### Q: Can I use this without Lovable Cloud?
-**A**: Yes! This project is designed to run completely locally. Use Groq's free tier for LLM capabilities, or run in mock mode for testing.
+### Q: Can I use this completely offline?
+**A**: The frontend runs locally, but you need internet access for Groq API calls. Use mock mode for offline testing without API calls.
 
 ### Q: Do I need a Supabase account?
 **A**: Only if you want to deploy the edge function to production. For local development, you can use the Supabase CLI without an account.
@@ -950,7 +954,7 @@ supabase functions deploy analyze-websites
 
 ---
 
-## 🧪 Testing & Acceptance Criteria
+## Testing & Acceptance Criteria
 
 ### End-to-End Test (Manual)
 
@@ -1058,7 +1062,7 @@ Before marking this feature complete, verify:
 - [ ] `.env.example` exists with all required variables documented
 - [ ] Edge function supports `LLM_PROVIDER=groq` and calls Groq API successfully
 - [ ] Edge function supports `LLM_PROVIDER=mock` and returns dummy JSON
-- [ ] Edge function supports `LLM_PROVIDER=lovable` as fallback (optional)
+- [ ] Edge function supports multiple LLM providers (extensible architecture)
 - [ ] Frontend displays insights in all 6 categories (tldr, key_points, etc.)
 - [ ] Error handling works for invalid/missing API keys
 - [ ] README includes "Local Setup" section with Groq instructions
@@ -1073,7 +1077,7 @@ Before marking this feature complete, verify:
 
 ---
 
-## 🚀 Future Enhancements
+## Future Enhancements
 
 Potential features to add:
 
@@ -1090,7 +1094,7 @@ Potential features to add:
 
 ---
 
-## 📚 Additional Resources
+## Additional Resources
 
 ### Learning Materials
 - [React Documentation](https://react.dev/)
@@ -1106,54 +1110,59 @@ Potential features to add:
 
 ---
 
-## 📄 License
+## License
 
-This project was created with Lovable.
+MIT License - Created by [Rugved](https://github.com/rugved0102)
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- **Lovable** for the cloud platform and AI gateway
-- **Google** for Gemini 2.5 Flash AI model
+- **Groq** for fast LLM inference
 - **Supabase** for backend infrastructure
 - **shadcn/ui** for beautiful components
+- **Xenova** for transformer models
 - **Vercel** for Tailwind CSS
 
 ---
 
-## 📞 Support
+## Support
 
 Need help?
 
-1. **Lovable Documentation**: [docs.lovable.dev](https://docs.lovable.dev/)
-2. **Lovable Community**: [Discord](https://discord.com/channels/1119885301872070706)
-3. **Report Issues**: GitHub Issues (if applicable)
+1. **Project Repository**: [GitHub](https://github.com/rugved0102/Web-Scrapper-LLM)
+2. **Groq Documentation**: [console.groq.com/docs](https://console.groq.com/docs)
+3. **Supabase Docs**: [supabase.com/docs](https://supabase.com/docs)
+4. **Report Issues**: [GitHub Issues](https://github.com/rugved0102/Web-Scrapper-LLM/issues)
 
 ---
 
-## 🎉 Quick Start Summary
+## Quick Start Summary
 
 ```bash
 # 1. Clone the repo
-git clone <YOUR_GIT_URL>
+git clone https://github.com/rugved0102/Web-Scrapper-LLM.git
 
 # 2. Install dependencies
-cd <YOUR_PROJECT_NAME>
+cd Web-Scrapper-LLM
 npm install
 
-# 3. Run the app
+# 3. Setup environment
+cp .env.local.example .env.local
+# Add your GROQ_API_KEY
+
+# 4. Run the app
 npm run dev
 
-# 4. Open browser
-# Navigate to http://localhost:5173
+# 5. Open browser
+# Navigate to http://localhost:8082
 
-# 5. Start analyzing!
+# 6. Start analyzing!
 # Enter URLs → Choose purpose → Click Analyze → Get insights!
 ```
 
 ---
 
-**Happy Analyzing! 🚀**
+**Happy Analyzing!**
 
-Built with ❤️ using Lovable, React, and AI
+Built by [Rugved](https://github.com/rugved0102) using React, TypeScript, Supabase, and Groq AI
