@@ -1,5 +1,15 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Layers } from "lucide-react";
+import { 
+  Layers, 
+  ShoppingCart, 
+  Newspaper, 
+  Microscope, 
+  Briefcase, 
+  Home, 
+  Smartphone, 
+  BookOpen, 
+  Globe 
+} from "lucide-react";
 import { getAllDomains } from "@/lib/domainTemplates";
 
 export type DomainType = 
@@ -18,8 +28,26 @@ interface DomainSelectorProps {
   disabled?: boolean;
 }
 
+// Map icon names to actual icon components
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  ShoppingCart,
+  Newspaper,
+  Microscope,
+  Briefcase,
+  Home,
+  Smartphone,
+  BookOpen,
+  Globe,
+};
+
 export const DomainSelector = ({ value, onChange, disabled }: DomainSelectorProps) => {
   const domains = getAllDomains();
+
+  const renderIcon = (iconName: string) => {
+    const IconComponent = iconMap[iconName];
+    if (!IconComponent) return null;
+    return <IconComponent className="h-4 w-4" />;
+  };
 
   return (
     <div className="space-y-2">
@@ -35,7 +63,7 @@ export const DomainSelector = ({ value, onChange, disabled }: DomainSelectorProp
           {domains.map((domain) => (
             <SelectItem key={domain.id} value={domain.id}>
               <span className="flex items-center gap-2">
-                <span>{domain.icon}</span>
+                {renderIcon(domain.iconName)}
                 <span>{domain.name}</span>
               </span>
             </SelectItem>

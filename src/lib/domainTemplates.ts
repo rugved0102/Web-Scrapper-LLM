@@ -5,7 +5,7 @@ export interface DomainTemplate {
   id: string;
   name: string;
   description: string;
-  icon: string;
+  iconName: string; // Lucide icon name instead of emoji
   extractionPrompt: string;
   analysisPrompt: string;
   exampleUrls: string[];
@@ -16,7 +16,7 @@ export const domainTemplates: Record<string, DomainTemplate> = {
     id: "ecommerce",
     name: "E-Commerce",
     description: "Extract product details, prices, ratings, and reviews",
-    icon: "🛒",
+    iconName: "ShoppingCart",
     extractionPrompt: `Extract the following information from this e-commerce page:
 - Product name and brand
 - Current price and original price (if discounted)
@@ -48,7 +48,7 @@ Focus on structured data that helps understand the product offering and value pr
     id: "news",
     name: "News & Media",
     description: "Analyze news articles, headlines, and media content",
-    icon: "📰",
+    iconName: "Newspaper",
     extractionPrompt: `Extract the following from this news article:
 - Headline and subheadline
 - Author(s) and publication date
@@ -81,7 +81,7 @@ Focus on factual content and journalistic elements.`,
     id: "research",
     name: "Research & Academic",
     description: "Extract scholarly content, citations, and methodology",
-    icon: "🔬",
+    iconName: "Microscope",
     extractionPrompt: `Extract the following from this research/academic page:
 - Paper/study title and authors
 - Abstract or summary
@@ -114,7 +114,7 @@ Focus on scientific rigor and academic structure.`,
     id: "jobs",
     name: "Job Listings",
     description: "Extract job requirements, salary, and company details",
-    icon: "💼",
+    iconName: "Briefcase",
     extractionPrompt: `Extract the following from this job posting:
 - Job title and level (entry, mid, senior)
 - Company name and industry
@@ -148,7 +148,7 @@ Focus on requirements and what makes this role unique.`,
     id: "realestate",
     name: "Real Estate",
     description: "Extract property details, pricing, and location info",
-    icon: "🏠",
+    iconName: "Home",
     extractionPrompt: `Extract the following from this real estate listing:
 - Property address and location
 - Price and price per square foot
@@ -182,7 +182,7 @@ Focus on both quantitative specs and qualitative features.`,
     id: "socialmedia",
     name: "Social Media",
     description: "Analyze social posts, engagement, and trends",
-    icon: "📱",
+    iconName: "Smartphone",
     extractionPrompt: `Extract the following from this social media content:
 - Post author/account and verification status
 - Post date and time
@@ -215,7 +215,7 @@ Focus on content, engagement, and social signals.`,
     id: "documentation",
     name: "Documentation & Guides",
     description: "Extract technical docs, tutorials, and how-to content",
-    icon: "📚",
+    iconName: "BookOpen",
     extractionPrompt: `Extract the following from this documentation:
 - Document title and version
 - Target audience (beginner, advanced, etc.)
@@ -248,7 +248,7 @@ Focus on clarity, completeness, and usability.`,
     id: "general",
     name: "General Purpose",
     description: "Extract all text content and main information",
-    icon: "🌐",
+    iconName: "Globe",
     extractionPrompt: `Extract the main content from this webpage:
 - Page title and description
 - Main headings and sections
