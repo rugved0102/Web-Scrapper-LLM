@@ -557,7 +557,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
 
       {/* History List */}
       <ScrollArea className="flex-1">
-        <div className="p-2 pr-4 space-y-1">
+        <div className="p-2 pr-2 space-y-1">
           {loading ? (
             <div className="text-sm text-muted-foreground text-center py-8">
               Loading...
@@ -576,7 +576,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
               <div
                 key={item.id}
                 onClick={() => onSelectHistory(item)}
-                className="group relative p-2.5 pr-2 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                className="group relative p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors"
               >
                 {editingId === item.id ? (
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -609,39 +609,39 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-start gap-1.5">
                     {/* Purpose Icon */}
-                    {getPurposeIcon(item.purpose)}
+                    <div className="shrink-0 mt-0.5">
+                      {getPurposeIcon(item.purpose)}
+                    </div>
                     
-                    {/* Content */}
-                    <div className="flex-1 min-w-0 flex items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                          {item.title || truncateUrl(item)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatDate(item.created_at)}
-                          {item.tags && item.tags.length > 0 && (
-                            <span className="ml-2">
-                              {item.tags.slice(0, 2).map((tag, i) => (
-                                <span key={i} className="text-xs">
-                                  #{tag}{i < Math.min(item.tags!.length, 2) - 1 ? ", " : ""}
-                                </span>
-                              ))}
-                              {item.tags.length > 2 && ` +${item.tags.length - 2}`}
-                            </span>
-                          )}
-                        </div>
+                    {/* Content - constrained width */}
+                    <div className="flex-1 min-w-0" style={{ maxWidth: 'calc(100% - 130px)' }}>
+                      <div className="text-sm font-medium text-foreground truncate">
+                        {item.title || truncateUrl(item)}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {formatDate(item.created_at)}
+                        {item.tags && item.tags.length > 0 && (
+                          <span className="ml-2">
+                            {item.tags.slice(0, 2).map((tag, i) => (
+                              <span key={i} className="text-xs">
+                                #{tag}{i < Math.min(item.tags!.length, 2) - 1 ? ", " : ""}
+                              </span>
+                            ))}
+                            {item.tags.length > 2 && ` +${item.tags.length - 2}`}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
+                    {/* Actions - fixed width */}
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleStartEdit(item, e)}
-                        className="h-7 w-7 hover:bg-accent"
+                        className="h-6 w-6 hover:bg-accent"
                         title="Rename"
                       >
                         <Pencil className="h-3 w-3" />
@@ -650,7 +650,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleToggleStar(item.id, item.starred || false, e)}
-                        className="h-7 w-7 hover:bg-accent"
+                        className="h-6 w-6 hover:bg-accent"
                         title={item.starred ? "Unstar" : "Star"}
                       >
                         <Star
@@ -665,7 +665,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleToggleArchive(item.id, item.archived || false, e)}
-                        className="h-7 w-7 hover:bg-accent"
+                        className="h-6 w-6 hover:bg-accent"
                         title={item.archived ? "Unarchive" : "Archive"}
                       >
                         <Archive
@@ -680,7 +680,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleDelete(item.id, e)}
-                        className="h-7 w-7 hover:bg-accent"
+                        className="h-6 w-6 hover:bg-accent"
                         title="Delete"
                       >
                         <Trash2 className="h-3 w-3" />
