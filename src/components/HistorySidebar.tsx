@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Brain, Plus, LogOut, Trash2, ChevronLeft, ChevronRight, 
   Search, Star, SortAsc, Filter, Pencil, Check, X, Archive,
-  Briefcase, FlaskConical, Target, TrendingUp, Lightbulb, Globe
+  Briefcase, FlaskConical, Target, TrendingUp, Lightbulb, Globe, Clock
 } from "lucide-react";
 import {
   Select,
@@ -35,6 +35,17 @@ interface HistoryItem {
   updated_at?: string;
 }
 
+interface ScheduledTask {
+  id: string;
+  urls: string[];
+  purpose: string;
+  domain: string;
+  frequency: string;
+  next_run: string;
+  enabled: boolean;
+  created_at: string;
+}
+
 interface HistorySidebarProps {
   onSelectHistory: (item: HistoryItem) => void;
   onNewAnalysis: () => void;
@@ -42,6 +53,7 @@ interface HistorySidebarProps {
 
 export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySidebarProps) => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,11 +84,29 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
     }
   };
 
+  const fetchScheduledTasks = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("scheduled_tasks")
+        .select("*")
+        .eq("enabled", true)
+        .order("next_run", { ascending: true });
+
+      if (error) throw error;
+      setScheduledTasks((data as unknown as ScheduledTask[]) || []);
+    } catch (error) {
+      console.error("Error fetching scheduled tasks:", error);
+    }
+  };
+
   useEffect(() => {
     fetchHistory();
+    fetchScheduledTasks();
 
     // Subscribe to real-time updates
-    const subscription = supabase
+    const historySubscription = supabase
       .channel("analysis_history_changes")
       .on(
         "postgres_changes",
@@ -92,8 +122,25 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
       )
       .subscribe();
 
+    const scheduleSubscription = supabase
+      .channel("scheduled_tasks_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "scheduled_tasks",
+          filter: `user_id=eq.${user?.id}`,
+        },
+        () => {
+          fetchScheduledTasks();
+        }
+      )
+      .subscribe();
+
     return () => {
-      subscription.unsubscribe();
+      historySubscription.unsubscribe();
+      scheduleSubscription.unsubscribe();
     };
   }, [user]);
 
@@ -473,6 +520,40 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
           </div>
         </div>
       </div>
+
+      {/* Scheduled Tasks Section */}
+      {scheduledTasks.length > 0 && (
+        <div className="px-2 py-3 border-b border-border">
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <Clock className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-semibold text-foreground">Scheduled Tasks</span>
+            <Badge variant="secondary" className="ml-auto text-xs">
+              {scheduledTasks.length}
+            </Badge>
+          </div>
+          <div className="space-y-1">
+            {scheduledTasks.slice(0, 3).map((task) => (
+              <div
+                key={task.id}
+                className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="outline" className="text-xs">
+                    {task.frequency}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {task.urls.length} URL{task.urls.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Next run: {new Date(task.next_run).toLocaleDateString()} at{" "}
+                  {new Date(task.next_run).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* History List */}
       <ScrollArea className="flex-1">

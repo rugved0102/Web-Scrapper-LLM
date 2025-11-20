@@ -6,6 +6,7 @@ import { DomainSelector, DomainType } from "@/components/InsightEngine/DomainSel
 import { ScrapingProgress, ProgressStage } from "@/components/InsightEngine/ScrapingProgress";
 import { InsightDisplay, InsightData } from "@/components/InsightEngine/InsightDisplay";
 import { ExportButton } from "@/components/InsightEngine/ExportButton";
+import { ScheduleConfig } from "@/components/InsightEngine/ScheduleConfig";
 import { HistorySidebar } from "@/components/HistorySidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeFunctionLocally } from "@/lib/localFunctions";
@@ -31,6 +32,8 @@ const Index = () => {
   const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
   const [totalUrls, setTotalUrls] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showScheduleConfig, setShowScheduleConfig] = useState(false);
+  const [lastAnalyzedUrls, setLastAnalyzedUrls] = useState<string[]>([]);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
@@ -83,6 +86,8 @@ const Index = () => {
     setStage("fetching");
     setTotalUrls(urls.length);
     setCurrentUrlIndex(0);
+    setLastAnalyzedUrls(urls);
+    setShowScheduleConfig(false);
 
     try {
       // Stage 1: Fetching (0-40%)
@@ -302,8 +307,27 @@ const Index = () => {
           <div className="mt-4 sm:mt-6">
             <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
               <h2 className="text-lg sm:text-xl font-semibold text-foreground">Analysis Results</h2>
-              <ExportButton insights={insights} purpose={purpose} />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowScheduleConfig(!showScheduleConfig)}
+                >
+                  {showScheduleConfig ? "Hide Schedule" : "Schedule Recurring"}
+                </Button>
+                <ExportButton insights={insights} purpose={purpose} />
+              </div>
             </div>
+            
+            {/* Schedule Configuration */}
+            {showScheduleConfig && (
+              <ScheduleConfig
+                urls={lastAnalyzedUrls}
+                purpose={purpose}
+                domain={domain}
+              />
+            )}
+            
             <InsightDisplay insights={insights} purpose={purpose} analysisId={analysisId || undefined} />
             
             {/* Scroll to top button */}
