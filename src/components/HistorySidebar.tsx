@@ -609,18 +609,18 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-start gap-1.5">
+                  <div className="flex items-start gap-1">
                     {/* Purpose Icon */}
                     <div className="shrink-0 mt-0.5">
                       {getPurposeIcon(item.purpose)}
                     </div>
                     
-                    {/* Content - constrained width */}
-                    <div className="flex-1 min-w-0" style={{ maxWidth: 'calc(100% - 130px)' }}>
-                      <div className="text-sm font-medium text-foreground truncate">
+                    {/* Content - flexible but leaves room for buttons */}
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="text-sm font-medium text-foreground truncate pr-2">
                         {item.title || truncateUrl(item)}
                       </div>
-                      <div className="text-xs text-muted-foreground truncate">
+                      <div className="text-xs text-muted-foreground truncate pr-2">
                         {formatDate(item.created_at)}
                         {item.tags && item.tags.length > 0 && (
                           <span className="ml-2">
@@ -635,13 +635,13 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                       </div>
                     </div>
 
-                    {/* Actions - fixed width */}
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {/* Actions - always reserve space */}
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleStartEdit(item, e)}
-                        className="h-6 w-6 hover:bg-accent"
+                        className="h-6 w-6 hover:bg-accent p-0"
                         title="Rename"
                       >
                         <Pencil className="h-3 w-3" />
@@ -650,7 +650,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleToggleStar(item.id, item.starred || false, e)}
-                        className="h-6 w-6 hover:bg-accent"
+                        className="h-6 w-6 hover:bg-accent p-0"
                         title={item.starred ? "Unstar" : "Star"}
                       >
                         <Star
@@ -665,7 +665,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleToggleArchive(item.id, item.archived || false, e)}
-                        className="h-6 w-6 hover:bg-accent"
+                        className="h-6 w-6 hover:bg-accent p-0"
                         title={item.archived ? "Unarchive" : "Archive"}
                       >
                         <Archive
@@ -680,7 +680,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleDelete(item.id, e)}
-                        className="h-6 w-6 hover:bg-accent"
+                        className="h-6 w-6 hover:bg-accent p-0"
                         title="Delete"
                       >
                         <Trash2 className="h-3 w-3" />
