@@ -386,7 +386,15 @@ serve(async (req) => {
         let usedBrowser = false;
 
         // Try browser scraping first for known JS-heavy domains
-        const jsHeavyDomains = ["reddit.com", "twitter.com", "x.com", "instagram.com", "facebook.com"];
+        const jsHeavyDomains = [
+          "reddit.com", 
+          "twitter.com", 
+          "x.com", 
+          "instagram.com", 
+          "facebook.com",
+          "vercel.app", // Next.js/React apps on Vercel
+          "netlify.app", // React/Vue apps on Netlify
+        ];
         const shouldUseBrowser = jsHeavyDomains.some(domain => url.includes(domain));
 
         if (shouldUseBrowser) {
