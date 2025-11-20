@@ -304,48 +304,107 @@ serve(async (req) => {
     for (const url of urls) {
       try {
         console.log(`Fetching: ${url}`);
+        
+        // Enhanced headers to mimic real browser
         const response = await fetch(url, {
           headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; InsightEngine/1.0)",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "DNT": "1",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
           },
         });
         
         if (!response.ok) {
           console.error(`Failed to fetch ${url}: ${response.status}`);
+          scrapedData.push({
+            url,
+            content: `Failed to fetch website (Status: ${response.status}). This might be due to access restrictions, rate limiting, or the site blocking automated requests.`,
+            title: `Error fetching ${new URL(url).hostname}`,
+          });
           continue;
         }
 
         const html = await response.text();
         
-        // Basic content extraction (remove HTML tags, scripts, styles)
-        const textContent = html
+        // Extract title first
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const title = titleMatch ? titleMatch[1].trim() : new URL(url).hostname;
+
+        // Improved content extraction
+        let textContent = html
+          // Remove scripts, styles, and other non-content tags
           .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
           .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+          .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, "")
+          .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, "")
+          .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, "")
+          // Extract text from common content tags
+          .replace(/<(p|h[1-6]|li|td|th|blockquote|article|section)[^>]*>([^<]+)<\/\1>/gi, " $2 ")
+          // Remove remaining HTML tags
           .replace(/<[^>]+>/g, " ")
+          // Clean up entities and whitespace
+          .replace(/&nbsp;/g, " ")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&#\d+;/g, " ")
           .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 8000); // Limit content length
+          .trim();
 
-        // Extract title
-        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        const title = titleMatch ? titleMatch[1] : new URL(url).hostname;
+        // Check if we got meaningful content
+        if (textContent.length < 200) {
+          console.warn(`Low content extracted from ${url} (${textContent.length} chars). Likely a JavaScript-heavy site.`);
+          
+          // For JS-heavy sites, try to extract any visible text more aggressively
+          textContent = html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+          
+          if (textContent.length < 200) {
+            textContent = `Limited content extracted from ${url}. This website may require JavaScript to display its content, which cannot be executed in this scraper. Consider using sites with static HTML content for best results. Extracted title: "${title}"`;
+          }
+        }
+
+        // Limit content length but keep it reasonable
+        const finalContent = textContent.slice(0, 10000);
+        
+        console.log(`Extracted ${finalContent.length} characters from ${url}`);
 
         scrapedData.push({
           url,
-          content: textContent,
+          content: finalContent,
           title,
         });
       } catch (error) {
         console.error(`Error scraping ${url}:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        scrapedData.push({
+          url,
+          content: `Error occurred while scraping: ${errorMessage}. The website may be blocking automated requests or may have connectivity issues.`,
+          title: `Error: ${new URL(url).hostname}`,
+        });
       }
     }
 
     if (scrapedData.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Failed to scrape any websites" }),
+        JSON.stringify({ 
+          error: "Failed to scrape any websites. All URLs either failed to load or returned no content.",
+          details: "This can happen if the websites block automated requests or require JavaScript to render content."
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Successfully scraped ${scrapedData.length} out of ${urls.length} URLs`);
 
     // Prepare content for AI analysis
     const consolidatedContent = scrapedData
