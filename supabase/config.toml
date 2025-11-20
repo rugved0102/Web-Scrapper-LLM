@@ -1,0 +1,10 @@
+project_id = "xxrhqvocwwpukxiidazn"
+
+[functions.analyze-websites]
+verify_jwt = true
+
+[functions.search-inside]
+verify_jwt = true
+
+[functions.generate-embeddings]
+verify_jwt = true
