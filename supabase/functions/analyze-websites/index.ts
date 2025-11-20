@@ -566,6 +566,18 @@ Output in JSON format:
         console.log("Saving content to database...");
         
         for (const scraped of scrapedData) {
+          // Skip saving if content is an error message
+          if (scraped.content.includes("Failed to fetch website") || scraped.content.includes("Error occurred while scraping")) {
+            console.log(`Skipping save for ${scraped.url} - error content`);
+            continue;
+          }
+
+          // Skip if content is too short (likely failed scrape)
+          if (scraped.content.length < 200) {
+            console.log(`Skipping save for ${scraped.url} - content too short (${scraped.content.length} chars)`);
+            continue;
+          }
+
           // Save content
           const { data: contentData, error: contentError } = await supabase
             .from("analysis_content")
