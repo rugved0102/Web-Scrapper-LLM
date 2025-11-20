@@ -33,13 +33,35 @@ function chunkText(text: string, chunkSize: number = 500): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
-// Generate embeddings using a simple TF-IDF approach (fallback for Deno)
-async function generateSimpleEmbedding(text: string): Promise<number[]> {
-  // Simple word frequency based embedding (384 dimensions)
+// Generate embeddings using Xenova transformers (better quality)
+async function generateEmbedding(text: string): Promise<number[]> {
+  try {
+    // Use Xenova/transformers for proper embeddings
+    // @ts-ignore - Deno dynamic import
+    const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+    
+    // Cache the pipeline to avoid reloading
+    if (!(globalThis as any).embeddingPipeline) {
+      console.log("Loading embedding model...");
+      (globalThis as any).embeddingPipeline = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+    }
+    
+    const pipe = (globalThis as any).embeddingPipeline;
+    const output = await pipe(text, { pooling: 'mean', normalize: true });
+    return Array.from(output.data);
+  } catch (error) {
+    console.error("Error generating embedding with Xenova, falling back to simple:", error);
+    // Fallback to simple embedding if Xenova fails
+    return generateSimpleEmbedding(text);
+  }
+}
+
+// Simple fallback embedding (word frequency hashing)
+function generateSimpleEmbedding(text: string): number[] {
   const words = text.toLowerCase().split(/\s+/);
   const embedding = new Array(384).fill(0);
   
-  words.forEach((word, idx) => {
+  words.forEach((word) => {
     const hash = word.split('').reduce((acc, char) => {
       return ((acc << 5) - acc) + char.charCodeAt(0);
     }, 0);
@@ -406,7 +428,7 @@ Output in JSON format:
             const embeddingsToInsert = [];
             for (let i = 0; i < chunks.length; i++) {
               const chunk = chunks[i];
-              const embedding = await generateSimpleEmbedding(chunk);
+              const embedding = await generateEmbedding(chunk);
               
               embeddingsToInsert.push({
                 analysis_content_id: contentData.id,
