@@ -147,10 +147,12 @@ async function callLLM(systemPrompt: string, analysisPrompt: string): Promise<In
   const LLM_PROVIDER = Deno.env.get("LLM_PROVIDER") || "groq";
   
   console.log(`Using LLM provider: ${LLM_PROVIDER}`);
+  console.log(`Environment check - GROQ_API_KEY exists: ${!!Deno.env.get("GROQ_API_KEY")}`);
 
   if (LLM_PROVIDER === "groq") {
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) {
+      console.error("GROQ_API_KEY is not set in environment");
       throw new Error("GROQ_API_KEY not configured. Set it in your environment or use LLM_PROVIDER=mock for testing.");
     }
 
