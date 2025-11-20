@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Brain, Plus, LogOut, Trash2, ChevronLeft, ChevronRight, 
   Search, Star, SortAsc, Filter, Pencil, Check, X, Archive,
-  Briefcase, FlaskConical, Target, TrendingUp, Lightbulb, Globe, Clock
+  Briefcase, FlaskConical, Target, TrendingUp, Lightbulb, Globe, Clock,
+  AlertTriangle, TrendingDown, ArrowUpDown
 } from "lucide-react";
 import {
   Select,
@@ -33,6 +34,9 @@ interface HistoryItem {
   tags?: string[];
   created_at: string;
   updated_at?: string;
+  has_changes?: boolean;
+  change_magnitude?: 'none' | 'minor' | 'moderate' | 'major' | 'critical';
+  changes_count?: number;
 }
 
 interface ScheduledTask {
@@ -407,6 +411,27 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
     }
   };
 
+  const getChangeMagnitudeBadge = (magnitude?: string, count?: number) => {
+    if (!magnitude || magnitude === 'none' || !count || count === 0) return null;
+
+    const config = {
+      critical: { variant: 'destructive' as const, icon: <AlertTriangle className="h-3 w-3" />, color: 'text-red-600' },
+      major: { variant: 'destructive' as const, icon: <TrendingDown className="h-3 w-3" />, color: 'text-orange-600' },
+      moderate: { variant: 'secondary' as const, icon: <ArrowUpDown className="h-3 w-3" />, color: 'text-yellow-600' },
+      minor: { variant: 'outline' as const, icon: <TrendingUp className="h-3 w-3" />, color: 'text-blue-600' },
+    };
+
+    const cfg = config[magnitude as keyof typeof config];
+    if (!cfg) return null;
+
+    return (
+      <Badge variant={cfg.variant} className="text-xs gap-1">
+        {cfg.icon}
+        {count}
+      </Badge>
+    );
+  };
+
   if (collapsed) {
     return (
       <div className="sticky top-0 h-screen border-r border-border bg-card flex flex-col items-center py-4 w-14">
@@ -617,8 +642,11 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                     
                     {/* Content - flexible but leaves room for buttons */}
                     <div className="flex-1 min-w-0 overflow-hidden">
-                      <div className="text-sm font-medium text-foreground truncate pr-2">
-                        {item.title || truncateUrl(item)}
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium text-foreground truncate pr-2">
+                          {item.title || truncateUrl(item)}
+                        </div>
+                        {getChangeMagnitudeBadge(item.change_magnitude, item.changes_count)}
                       </div>
                       <div className="text-xs text-muted-foreground truncate pr-2">
                         {formatDate(item.created_at)}
