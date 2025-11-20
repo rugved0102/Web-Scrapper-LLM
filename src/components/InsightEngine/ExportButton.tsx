@@ -85,19 +85,19 @@ export const ExportButton = ({ insights, purpose }: ExportButtonProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 h-9">
+        <Button variant="outline" size="sm" className="gap-2 h-9 text-xs sm:text-sm">
           <Download className="h-3.5 w-3.5" />
-          Export
+          <span className="hidden sm:inline">Export</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem onClick={exportAsJSON} className="cursor-pointer text-sm">
+      <DropdownMenuContent align="end" className="w-40 sm:w-44">
+        <DropdownMenuItem onClick={exportAsJSON} className="cursor-pointer text-xs sm:text-sm">
           Export as JSON
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportAsText} className="cursor-pointer text-sm">
+        <DropdownMenuItem onClick={exportAsText} className="cursor-pointer text-xs sm:text-sm">
           Export as Text
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportAsMarkdown} className="cursor-pointer text-sm">
+        <DropdownMenuItem onClick={exportAsMarkdown} className="cursor-pointer text-xs sm:text-sm">
           Export as Markdown
         </DropdownMenuItem>
       </DropdownMenuContent>

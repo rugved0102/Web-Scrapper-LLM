@@ -59,36 +59,39 @@ export const SearchInsideWebsite = ({ analysisId }: SearchInsideWebsiteProps) =>
   };
 
   return (
-    <Card className="mt-6 border-primary/20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Search className="h-5 w-5" />
-          Ask Questions About This Website
+    <Card className="mt-4 sm:mt-6 border-primary/20">
+      <CardHeader className="px-3 sm:px-6 py-3 sm:py-6">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <Search className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+          <span className="hidden sm:inline">Ask Questions About This Website</span>
+          <span className="sm:hidden">Ask Questions</span>
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
           Use AI to search and answer questions based on the analyzed content
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex gap-2 mb-4">
+      <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
           <Input
-            placeholder="e.g., What does this website say about water toxicity?"
+            placeholder="Ask a question..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
             disabled={loading}
-            className="flex-1"
+            className="flex-1 text-sm"
           />
-          <Button onClick={handleSearch} disabled={loading || !query.trim()}>
+          <Button onClick={handleSearch} disabled={loading || !query.trim()} className="w-full sm:w-auto">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Searching...
+                <span className="hidden sm:inline">Searching...</span>
+                <span className="sm:hidden">Searching</span>
               </>
             ) : (
               <>
                 <Search className="mr-2 h-4 w-4" />
-                Ask AI
+                <span className="hidden sm:inline">Ask AI</span>
+                <span className="sm:hidden">Ask</span>
               </>
             )}
           </Button>

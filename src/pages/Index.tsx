@@ -10,9 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { invokeFunctionLocally } from "@/lib/localFunctions";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Brain, Moon, Sun } from "lucide-react";
+import { Brain, Moon, Sun, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
@@ -24,6 +25,7 @@ const Index = () => {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"scraping" | "analyzing" | "complete">("scraping");
   const [currentUrl, setCurrentUrl] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
@@ -137,6 +139,7 @@ const Index = () => {
     setPurpose(item.purpose || "business");
     setInsights(item.result);
     setCurrentUrl(item.url);
+    setSidebarOpen(false); // Close sidebar on mobile after selection
   };
 
   const handleNewAnalysis = () => {
@@ -160,25 +163,49 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <HistorySidebar
-        onSelectHistory={handleSelectHistory}
-        onNewAnalysis={handleNewAnalysis}
-      />
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <HistorySidebar
+          onSelectHistory={handleSelectHistory}
+          onNewAnalysis={handleNewAnalysis}
+        />
+      </div>
+
+      {/* Mobile Sidebar */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="p-0 w-[300px]">
+          <HistorySidebar
+            onSelectHistory={handleSelectHistory}
+            onNewAnalysis={handleNewAnalysis}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 max-w-5xl">
+        <div className="container mx-auto px-4 sm:px-6 py-3 max-w-5xl">
           <div className="flex items-center justify-between">
-            <button 
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
-            >
-              <Brain className="h-6 w-6 text-primary" />
-              <h1 className="text-lg font-semibold text-foreground">InsightEngine</h1>
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Mobile Menu Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden h-9 w-9"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              
+              <button 
+                onClick={() => navigate("/")}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+              >
+                <Brain className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <h1 className="text-base sm:text-lg font-semibold text-foreground">InsightEngine</h1>
+              </button>
+            </div>
             <Button
               variant="ghost"
               size="icon"
@@ -196,14 +223,14 @@ const Index = () => {
       </header>
 
         {/* Main Content */}
-        <main className="container mx-auto px-6 py-6 flex-1" style={{ maxWidth: '900px' }}>
+        <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 flex-1" style={{ maxWidth: '900px' }}>
         {/* Input Section */}
-        <div className="mb-6">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-foreground mb-1">
+        <div className="mb-4 sm:mb-6">
+          <div className="mb-3 sm:mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">
               Analyze Websites
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Enter website URLs to extract insights and receive AI-powered recommendations.
             </p>
           </div>
@@ -229,9 +256,9 @@ const Index = () => {
 
         {/* Results Section */}
         {insights && !isLoading && (
-          <div className="mt-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-foreground">Analysis Results</h2>
+          <div className="mt-4 sm:mt-6">
+            <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Analysis Results</h2>
               <ExportButton insights={insights} purpose={purpose} />
             </div>
             <InsightDisplay insights={insights} purpose={purpose} analysisId={analysisId || undefined} />

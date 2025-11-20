@@ -106,23 +106,25 @@ export const URLInput = ({ onSubmit, isLoading }: URLInputProps) => {
         ))}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Button
           type="button"
           variant="outline"
           onClick={addUrlField}
           disabled={isLoading}
-          className="flex-1 h-10"
+          className="w-full sm:flex-1 h-10"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add URL
+          <span className="hidden sm:inline">Add URL</span>
+          <span className="sm:hidden">Add Another</span>
         </Button>
         <Button
           onClick={handleSubmit}
           disabled={isLoading}
-          className="flex-1 h-10"
+          className="w-full sm:flex-1 h-10"
         >
-          Analyze Websites
+          <span className="hidden sm:inline">Analyze Websites</span>
+          <span className="sm:hidden">Analyze</span>
         </Button>
       </div>
     </div>
