@@ -27,22 +27,38 @@ const Index = () => {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
-  // Redirect to auth if not logged in
+  // Redirect to landing page if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate("/auth");
+      navigate("/");
     }
   }, [authLoading, user, navigate]);
 
-  const saveToHistory = async (url: string, result: InsightData) => {
+  const saveToHistory = async (urls: string[], result: InsightData) => {
     if (!user) return;
 
     try {
+      // Generate a title from the first URL domain
+      let title = "";
+      try {
+        const urlObj = new URL(urls[0]);
+        title = urlObj.hostname.replace("www.", "");
+        if (urls.length > 1) {
+          title += ` +${urls.length - 1} more`;
+        }
+      } catch (e) {
+        title = urls[0];
+      }
+
       await supabase.from("analysis_history").insert([{
         user_id: user.id,
-        url,
+        url: urls[0], // Keep for backward compatibility
+        urls: urls, // New field for multiple URLs
+        title: title,
         result: result as any,
         purpose,
+        starred: false,
+        tags: [],
       }]);
     } catch (error) {
       console.error("Error saving to history:", error);
@@ -93,8 +109,8 @@ const Index = () => {
       setInsights(data.insights);
       setAnalysisId(data.analysisId || null);
 
-      // Save to history
-      await saveToHistory(urls[0], data.insights);
+      // Save to history with all URLs
+      await saveToHistory(urls, data.insights);
 
       toast({
         title: "Analysis Complete",
@@ -156,10 +172,13 @@ const Index = () => {
         <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 max-w-5xl">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="h-6 w-6 text-foreground" />
+            <button 
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+            >
+              <Brain className="h-6 w-6 text-primary" />
               <h1 className="text-lg font-semibold text-foreground">InsightEngine</h1>
-            </div>
+            </button>
             <Button
               variant="ghost"
               size="icon"

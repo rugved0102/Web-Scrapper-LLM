@@ -1,19 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Brain, Plus, LogOut, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Brain, Plus, LogOut, Trash2, ChevronLeft, ChevronRight, 
+  Search, Star, SortAsc, Filter, Pencil, Check, X,
+  Briefcase, FlaskConical, Target, TrendingUp, Lightbulb, Globe
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { InsightData } from "@/components/InsightEngine/InsightDisplay";
 import { PurposeMode } from "@/components/InsightEngine/PurposeSelector";
 
 interface HistoryItem {
   id: string;
   url: string;
+  urls?: string[];
+  title?: string;
   result: InsightData;
   purpose: PurposeMode;
+  starred?: boolean;
+  tags?: string[];
   created_at: string;
+  updated_at?: string;
 }
 
 interface HistorySidebarProps {
@@ -25,6 +43,12 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "starred">("date");
+  const [filterPurpose, setFilterPurpose] = useState<string>("all");
+  const [showStarredOnly, setShowStarredOnly] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -48,7 +72,169 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
 
   useEffect(() => {
     fetchHistory();
+
+    // Subscribe to real-time updates
+    const subscription = supabase
+      .channel("analysis_history_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "analysis_history",
+          filter: `user_id=eq.${user?.id}`,
+        },
+        () => {
+          fetchHistory();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [user]);
+
+  // Filter and sort history
+  const filteredHistory = useMemo(() => {
+    let filtered = history;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((item) => {
+        const urls = item.urls || (item.url ? [item.url] : []);
+        const urlMatch = urls.some((url) => url?.toLowerCase().includes(query));
+        const titleMatch = item.title?.toLowerCase().includes(query);
+        const tagMatch = item.tags?.some((tag) => tag?.toLowerCase().includes(query));
+        const purposeMatch = item.purpose?.toLowerCase().includes(query);
+        
+        return urlMatch || titleMatch || tagMatch || purposeMatch;
+      });
+    }
+
+    // Purpose filter
+    if (filterPurpose !== "all") {
+      filtered = filtered.filter((item) => item.purpose === filterPurpose);
+    }
+
+    // Starred filter
+    if (showStarredOnly) {
+      filtered = filtered.filter((item) => item.starred);
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      if (sortBy === "starred") {
+        if (a.starred && !b.starred) return -1;
+        if (!a.starred && b.starred) return 1;
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    return filtered;
+  }, [history, searchQuery, filterPurpose, showStarredOnly, sortBy]);
+
+  // Get unique purposes for filter
+  const uniquePurposes = useMemo(() => {
+    return Array.from(new Set(history.map((item) => item.purpose)));
+  }, [history]);
+
+  // Toggle star
+  const handleToggleStar = async (id: string, currentStarred: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    try {
+      const { error } = await supabase
+        .from("analysis_history")
+        .update({ starred: !currentStarred })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Star error:", error);
+        throw error;
+      }
+
+      setHistory((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, starred: !currentStarred } : item
+        )
+      );
+
+      toast({
+        title: !currentStarred ? "Starred" : "Unstarred",
+        description: !currentStarred ? "Added to favorites" : "Removed from favorites",
+      });
+    } catch (error) {
+      console.error("Failed to toggle star:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update. Make sure the database migration is applied.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Start editing title
+  const handleStartEdit = (item: HistoryItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(item.id);
+    setEditingTitle(item.title || truncateUrl(item));
+  };
+
+  // Cancel editing
+  const handleCancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(null);
+    setEditingTitle("");
+  };
+
+  // Save edited title
+  const handleSaveEdit = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (!editingTitle.trim()) {
+      toast({
+        title: "Error",
+        description: "Title cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("analysis_history")
+        .update({ title: editingTitle.trim() })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Update error:", error);
+        throw error;
+      }
+
+      setHistory((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, title: editingTitle.trim() } : item
+        )
+      );
+
+      setEditingId(null);
+      setEditingTitle("");
+
+      toast({
+        title: "Renamed",
+        description: "History item renamed successfully",
+      });
+    } catch (error) {
+      console.error("Failed to rename:", error);
+      toast({
+        title: "Error",
+        description: "Failed to rename. Make sure the database migration is applied.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -91,22 +277,47 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
 
     if (days === 0) return "Today";
     if (days === 1) return "Yesterday";
-    if (days < 7) return `${days} days ago`;
+    if (days < 7) return `${days}d ago`;
     return date.toLocaleDateString();
   };
 
-  const truncateUrl = (url: string) => {
+  const truncateUrl = (item: HistoryItem) => {
+    const urls = item.urls || [item.url];
+    const url = urls[0];
+    
     try {
       const urlObj = new URL(url);
-      return urlObj.hostname.replace("www.", "");
+      const domain = urlObj.hostname.replace("www.", "");
+      return urls.length > 1 ? `${domain} +${urls.length - 1}` : domain;
     } catch {
-      return url.length > 30 ? url.substring(0, 30) + "..." : url;
+      return url.length > 25 ? url.substring(0, 25) + "..." : url;
+    }
+  };
+
+  const getPurposeIcon = (purpose: string) => {
+    const iconProps = { className: "h-4 w-4 text-muted-foreground shrink-0" };
+    
+    switch (purpose) {
+      case "business":
+        return <Briefcase {...iconProps} />;
+      case "research":
+        return <FlaskConical {...iconProps} />;
+      case "competitive":
+        return <Target {...iconProps} />;
+      case "trends":
+        return <TrendingUp {...iconProps} />;
+      case "content":
+        return <Lightbulb {...iconProps} />;
+      case "general":
+        return <Globe {...iconProps} />;
+      default:
+        return <Brain {...iconProps} />;
     }
   };
 
   if (collapsed) {
     return (
-      <div className="h-screen border-r border-border bg-card flex flex-col items-center py-4 w-14">
+      <div className="sticky top-0 h-screen border-r border-border bg-card flex flex-col items-center py-4 w-14">
         <Button
           variant="ghost"
           size="icon"
@@ -121,13 +332,18 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
   }
 
   return (
-    <div className="h-screen border-r border-border bg-card flex flex-col" style={{ width: '280px' }}>
-      {/* Sidebar Top - Logo + New Analysis */}
+    <div className="sticky top-0 h-screen border-r border-border bg-card flex flex-col" style={{ width: '300px' }}>
+      {/* Header */}
       <div className="shrink-0">
         <div className="p-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-foreground" />
-            <span className="font-semibold text-foreground">InsightEngine</span>
+            <Brain className="h-5 w-5 text-primary" />
+            <span className="font-semibold text-foreground">History</span>
+            {history.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {history.length}
+              </Badge>
+            )}
           </div>
           <Button
             variant="ghost"
@@ -139,52 +355,187 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
           </Button>
         </div>
 
-        <div className="p-3">
-          <Button
-            onClick={onNewAnalysis}
-            className="w-full justify-start"
-            variant="outline"
-          >
-            <Plus className="h-4 w-4 mr-2" />
+        {/* New Analysis Button */}
+        <div className="p-3 border-b border-border">
+          <Button onClick={onNewAnalysis} className="w-full justify-start gap-2">
+            <Plus className="h-4 w-4" />
             New Analysis
           </Button>
         </div>
+
+        {/* Search and Filters */}
+        <div className="p-3 space-y-2 border-b border-border">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+
+          {/* Filter Controls */}
+          <div className="flex gap-2">
+            {/* Purpose Filter */}
+            <Select value={filterPurpose} onValueChange={setFilterPurpose}>
+              <SelectTrigger className="h-8 flex-1 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {uniquePurposes.map((purpose) => (
+                  <SelectItem key={purpose} value={purpose}>
+                    {purpose}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Sort */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setSortBy(sortBy === "date" ? "starred" : "date")}
+              title={sortBy === "date" ? "Sort by starred" : "Sort by date"}
+            >
+              <SortAsc className="h-4 w-4" />
+            </Button>
+
+            {/* Star Filter */}
+            <Button
+              variant={showStarredOnly ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setShowStarredOnly(!showStarredOnly)}
+              title="Show starred only"
+            >
+              <Star className={`h-4 w-4 ${showStarredOnly ? "fill-current" : ""}`} />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Sidebar History - Scrollable */}
-      <ScrollArea className="flex-1 px-3">
-        <div className="space-y-1 pb-4">
+      {/* History List */}
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
           {loading ? (
             <div className="text-sm text-muted-foreground text-center py-8">
-              Loading history...
+              Loading...
             </div>
-          ) : history.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-8">
-              No analysis history yet
+          ) : filteredHistory.length === 0 ? (
+            <div className="text-center py-8">
+              <Brain className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">
+                {searchQuery || filterPurpose !== "all" || showStarredOnly
+                  ? "No results found"
+                  : "No history yet"}
+              </p>
             </div>
           ) : (
-            history.map((item) => (
+            filteredHistory.map((item) => (
               <div
                 key={item.id}
                 onClick={() => onSelectHistory(item)}
-                className="group flex items-center justify-between p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                className="group relative p-2.5 rounded-lg hover:bg-muted cursor-pointer transition-colors"
               >
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-foreground truncate">
-                    {truncateUrl(item.url)}
+                {editingId === item.id ? (
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    {getPurposeIcon(item.purpose)}
+                    <Input
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveEdit(item.id, e as any);
+                        if (e.key === "Escape") handleCancelEdit(e as any);
+                      }}
+                      className="h-7 text-sm flex-1"
+                      autoFocus
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleSaveEdit(item.id, e)}
+                      className="h-7 w-7 shrink-0"
+                    >
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleCancelEdit}
+                      className="h-7 w-7 shrink-0"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {formatDate(item.created_at)}
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {/* Purpose Icon */}
+                    {getPurposeIcon(item.purpose)}
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-foreground truncate">
+                          {item.title || truncateUrl(item)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDate(item.created_at)}
+                          {item.tags && item.tags.length > 0 && (
+                            <span className="ml-2">
+                              {item.tags.slice(0, 2).map((tag, i) => (
+                                <span key={i} className="text-xs">
+                                  #{tag}{i < Math.min(item.tags!.length, 2) - 1 ? ", " : ""}
+                                </span>
+                              ))}
+                              {item.tags.length > 2 && ` +${item.tags.length - 2}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleStartEdit(item, e)}
+                        className="h-7 w-7"
+                        title="Rename"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleToggleStar(item.id, item.starred || false, e)}
+                        className="h-7 w-7"
+                        title={item.starred ? "Unstar" : "Star"}
+                      >
+                        <Star
+                          className={`h-3 w-3 ${
+                            item.starred
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleDelete(item.id, e)}
+                        className="h-7 w-7"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => handleDelete(item.id, e)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 shrink-0"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                )}
               </div>
             ))
           )}

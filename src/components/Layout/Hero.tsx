@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Hero = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <section className="relative w-full py-20 md:py-32 lg:py-40">
@@ -22,12 +24,13 @@ export const Hero = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button size="lg" className="px-8" onClick={() => navigate('/analyze')}>
-              Try Demo
+            <Button size="lg" className="px-8" onClick={() => navigate(user ? '/app' : '/auth')}>
+              {user ? 'Go to App' : 'Get Started'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button size="lg" variant="outline" className="px-8">
-              View Documentation
+            <Button size="lg" variant="outline" className="px-8" onClick={() => window.open('https://github.com/rugved0102/Web-Scrapper-LLM', '_blank')}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              View on GitHub
             </Button>
           </div>
           

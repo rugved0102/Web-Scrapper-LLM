@@ -1,11 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, Sparkles } from "lucide-react";
+import { Moon, Sun, Brain } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Header = () => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     setMounted(true);
@@ -14,10 +18,13 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-7xl items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-primary" />
+        <button 
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+        >
+          <Brain className="h-6 w-6 text-primary" />
           <span className="text-xl font-semibold tracking-tight">InsightEngine</span>
-        </div>
+        </button>
 
         <nav className="hidden md:flex items-center gap-8">
           <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
@@ -49,10 +56,28 @@ export const Header = () => {
               )}
             </Button>
           )}
-          <Button variant="outline" className="hidden sm:inline-flex">
-            Sign In
-          </Button>
-          <Button>Get Started</Button>
+          {user ? (
+            <Button onClick={() => navigate("/app")}>
+              Go to App
+            </Button>
+          ) : (
+            <>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate("/auth")}
+                className="hidden sm:inline-flex"
+              >
+                Log In
+              </Button>
+              <Button 
+                size="sm"
+                onClick={() => navigate("/auth")}
+              >
+                Get Started
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>
