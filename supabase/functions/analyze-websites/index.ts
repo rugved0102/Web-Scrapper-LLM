@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
 import { getDomainTemplate } from "../_shared/domainTemplates.ts";
+import { detectChanges, type InsightData } from "../_shared/changeDetection.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -813,6 +814,150 @@ Generate a detailed comparison in JSON format:
     if (languages.length > 0) {
       insights.languages = languages;
     }
+    
+    // CHANGE DETECTION: Run in background (don't await to speed up response)
+    (async () => {
+      try {
+        console.log("Running change detection...");
+        
+        // Get the primary URL for comparison
+        const primaryUrl = urls[0];
+        
+        // Fetch previous snapshot for this URL and user
+        const { data: previousSnapshot, error: snapshotError } = await supabase
+          .from("analysis_snapshots")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("url", primaryUrl)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (snapshotError && snapshotError.code !== 'PGRST116') {
+          console.error("Error fetching previous snapshot:", snapshotError);
+        }
+        
+        let changeResult = null;
+        let hasChanges = false;
+        let changeMagnitude = 'none';
+        
+        // Detect changes if previous snapshot exists
+        if (previousSnapshot) {
+          console.log(`Found previous snapshot from ${previousSnapshot.created_at}`);
+          changeResult = detectChanges(previousSnapshot.result as InsightData, insights as InsightData);
+          hasChanges = changeResult.hasChanges;
+          changeMagnitude = changeResult.changeMagnitude;
+          console.log(`Change detection: ${hasChanges ? 'Changes detected' : 'No changes'}, magnitude: ${changeMagnitude}`);
+        } else {
+          console.log("No previous snapshot found - this is the baseline");
+        }
+        
+        // Save new snapshot
+        const { data: newSnapshot, error: insertSnapshotError } = await supabase
+          .from("analysis_snapshots")
+          .insert({
+            user_id: userId,
+            url: primaryUrl,
+            urls: urls,
+            result: insights,
+            purpose: purpose,
+            domain: domain,
+            is_baseline: !previousSnapshot,
+            previous_snapshot_id: previousSnapshot?.id || null,
+            has_changes: hasChanges,
+            change_magnitude: changeMagnitude,
+          })
+          .select()
+          .single();
+        
+        if (insertSnapshotError) {
+          console.error("Error saving snapshot:", insertSnapshotError);
+          return;
+        }
+        
+        console.log(`Snapshot saved with ID: ${newSnapshot.id}`);
+        
+        // Store detected changes
+        if (changeResult && hasChanges) {
+          const changesToInsert = changeResult.changes.map(change => ({
+            user_id: userId,
+            snapshot_id: newSnapshot.id,
+            previous_snapshot_id: previousSnapshot.id,
+            change_type: change.type,
+            field_path: change.fieldPath,
+            old_value: change.oldValue,
+            new_value: change.newValue,
+            change_description: change.description,
+            severity: change.severity,
+            change_percentage: change.changePercentage || null,
+          }));
+          
+          const { error: changesError } = await supabase
+            .from("detected_changes")
+            .insert(changesToInsert);
+          
+          if (changesError) {
+            console.error("Error saving changes:", changesError);
+          } else {
+            console.log(`Saved ${changesToInsert.length} detected changes`);
+          }
+          
+          // Check user notification preferences
+          const { data: prefs, error: prefsError } = await supabase
+            .from("notification_preferences")
+            .select("*")
+            .eq("user_id", userId)
+            .maybeSingle();
+          
+          if (prefsError && prefsError.code !== 'PGRST116') {
+            console.error("Error fetching notification preferences:", prefsError);
+          }
+          
+          // Determine if user should be notified
+          const shouldNotify = prefs?.email_enabled &&
+            ((changeMagnitude === 'critical' && prefs.notify_on_critical) ||
+             (changeMagnitude === 'major' && prefs.notify_on_major) ||
+             (changeMagnitude === 'moderate' && prefs.notify_on_moderate) ||
+             (changeMagnitude === 'minor' && prefs.notify_on_minor));
+          
+          if (shouldNotify) {
+            console.log("Creating change alert for user");
+            
+            // Get user email
+            const { data: userData } = await supabase.auth.admin.getUserById(userId);
+            const userEmail = prefs.email_address || userData?.user?.email;
+            
+            if (userEmail) {
+              const { error: alertError } = await supabase
+                .from("change_alerts")
+                .insert({
+                  user_id: userId,
+                  snapshot_id: newSnapshot.id,
+                  alert_type: 'email',
+                  recipient_email: userEmail,
+                  subject: `🔔 Changes Detected: ${primaryUrl}`,
+                  message: changeResult.summary,
+                  changes_summary: {
+                    magnitude: changeResult.changeMagnitude,
+                    similarity: changeResult.overallSimilarity,
+                    changes: changeResult.changes.slice(0, 10), // Limit to first 10
+                  },
+                });
+              
+              if (alertError) {
+                console.error("Error creating alert:", alertError);
+              } else {
+                console.log("Alert created successfully");
+              }
+            }
+          } else {
+            console.log("Not creating alert - user preferences don't match or notifications disabled");
+          }
+        }
+      } catch (error) {
+        console.error("Error in change detection:", error);
+      }
+    })();
     
     return new Response(
       JSON.stringify({ 
