@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { URLInput } from "@/components/InsightEngine/URLInput";
 import { PurposeSelector, PurposeMode } from "@/components/InsightEngine/PurposeSelector";
+import { DomainSelector, DomainType } from "@/components/InsightEngine/DomainSelector";
 import { ScrapingProgress } from "@/components/InsightEngine/ScrapingProgress";
 import { InsightDisplay, InsightData } from "@/components/InsightEngine/InsightDisplay";
 import { ExportButton } from "@/components/InsightEngine/ExportButton";
@@ -19,6 +20,7 @@ const Index = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [purpose, setPurpose] = useState<PurposeMode>("business");
+  const [domain, setDomain] = useState<DomainType>("general");
   const [isLoading, setIsLoading] = useState(false);
   const [insights, setInsights] = useState<InsightData | null>(null);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
@@ -59,6 +61,7 @@ const Index = () => {
         title: title,
         result: result as any,
         purpose,
+        domain,
         starred: false,
         tags: [],
       }]);
@@ -85,7 +88,7 @@ const Index = () => {
       setStatus("analyzing");
       setProgress(60);
 
-      const { data, error } = await invokeFunctionLocally("analyze-websites", { urls, purpose });
+      const { data, error } = await invokeFunctionLocally("analyze-websites", { urls, purpose, domain });
 
       if (error) {
         if (error.message.includes("429")) {
@@ -137,6 +140,7 @@ const Index = () => {
 
   const handleSelectHistory = (item: any) => {
     setPurpose(item.purpose || "business");
+    setDomain(item.domain || "general");
     setInsights(item.result);
     setCurrentUrl(item.url);
     setSidebarOpen(false); // Close sidebar on mobile after selection
@@ -239,6 +243,11 @@ const Index = () => {
             <PurposeSelector
               value={purpose}
               onChange={setPurpose}
+              disabled={isLoading}
+            />
+            <DomainSelector
+              value={domain}
+              onChange={setDomain}
               disabled={isLoading}
             />
             <URLInput onSubmit={handleAnalyze} isLoading={isLoading} />

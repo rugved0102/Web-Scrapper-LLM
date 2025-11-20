@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
+import { getDomainTemplate } from "../_shared/domainTemplates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,7 @@ const corsHeaders = {
 interface AnalysisRequest {
   urls: string[];
   purpose: string;
+  domain?: string;
 }
 
 interface InsightResponse {
@@ -287,7 +289,7 @@ serve(async (req) => {
       );
     }
 
-    const { urls, purpose }: AnalysisRequest = await req.json();
+    const { urls, purpose, domain }: AnalysisRequest = await req.json();
     
     if (!urls || urls.length === 0) {
       return new Response(
@@ -296,7 +298,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Analyzing ${urls.length} URLs with purpose: ${purpose}`);
+    console.log(`Analyzing ${urls.length} URLs with purpose: ${purpose}, domain: ${domain || 'general'}`);
 
     // Helper function to scrape with headless browser (for JS-heavy sites)
     async function scrapeWithBrowser(url: string): Promise<{ html: string; title: string } | null> {
@@ -539,11 +541,21 @@ serve(async (req) => {
       .map((data) => `\n### ${data.title}\nURL: ${data.url}\n\n${data.content}`)
       .join("\n\n---\n");
 
+    // Get domain-specific prompts
+    const domainTemplate = getDomainTemplate(domain || 'general');
+    
     const systemPrompt = purposePrompts[purpose as keyof typeof purposePrompts] || purposePrompts.general;
 
     const analysisPrompt = `${systemPrompt}
 
-You are analyzing content from ${scrapedData.length} website(s).
+You are analyzing content from ${scrapedData.length} website(s) with domain type: ${domainTemplate.name}.
+
+Domain-Specific Extraction Guide:
+${domainTemplate.extractionPrompt}
+
+Domain-Specific Analysis Focus:
+${domainTemplate.analysisPrompt}
+
 Base ALL insights strictly on the provided content. Never create information not present.
 
 ${consolidatedContent}
@@ -556,7 +568,7 @@ Output in JSON format:
   "conflicts_across_sources": ["Any contradictions between sources"],
   "opportunities_or_gaps": ["Missing information or opportunities identified"],
   "recommendations": ["3-5 actionable recommendations"],
-  "domain_specific_insights": ["Insights specific to ${purpose} analysis"]
+  "domain_specific_insights": ["Insights specific to ${domainTemplate.name} domain and ${purpose} analysis"]
 }`;
 
     const LLM_PROVIDER = Deno.env.get("LLM_PROVIDER") || "groq";
