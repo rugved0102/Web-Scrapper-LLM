@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { URLInput } from "@/components/InsightEngine/URLInput";
 import { PurposeSelector, PurposeMode } from "@/components/InsightEngine/PurposeSelector";
 import { DomainSelector, DomainType } from "@/components/InsightEngine/DomainSelector";
-import { ScrapingProgress } from "@/components/InsightEngine/ScrapingProgress";
+import { ScrapingProgress, ProgressStage } from "@/components/InsightEngine/ScrapingProgress";
 import { InsightDisplay, InsightData } from "@/components/InsightEngine/InsightDisplay";
 import { ExportButton } from "@/components/InsightEngine/ExportButton";
 import { HistorySidebar } from "@/components/HistorySidebar";
@@ -26,7 +26,10 @@ const Index = () => {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"scraping" | "analyzing" | "complete">("scraping");
+  const [stage, setStage] = useState<ProgressStage>("fetching");
   const [currentUrl, setCurrentUrl] = useState("");
+  const [currentUrlIndex, setCurrentUrlIndex] = useState(0);
+  const [totalUrls, setTotalUrls] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
@@ -77,17 +80,30 @@ const Index = () => {
     setAnalysisId(null);
     setProgress(0);
     setStatus("scraping");
+    setStage("fetching");
+    setTotalUrls(urls.length);
+    setCurrentUrlIndex(0);
 
     try {
-      // Simulate progress for scraping
+      // Stage 1: Fetching (0-40%)
       for (let i = 0; i < urls.length; i++) {
         setCurrentUrl(urls[i]);
-        setProgress(((i + 1) / urls.length) * 50);
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        setCurrentUrlIndex(i);
+        setStage("fetching");
+        setProgress(((i + 1) / urls.length) * 30);
+        await new Promise((resolve) => setTimeout(resolve, 400));
       }
+      
+      // Stage 2: Parsing (40-50%)
+      setStage("parsing");
+      setProgress(40);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setProgress(50);
 
+      // Stage 3: Analyzing (50-85%)
       setStatus("analyzing");
-      setProgress(60);
+      setStage("analyzing");
+      setProgress(55);
 
       const { data, error } = await invokeFunctionLocally("analyze-websites", { urls, purpose, domain });
 
@@ -109,9 +125,23 @@ const Index = () => {
         }
         return;
       }
+      
+      // Stage 4: Creating embeddings (85-95%)
+      setStage("embedding");
+      setProgress(85);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setProgress(90);
+      
+      // Stage 5: Comparison (if multiple URLs) (95-98%)
+      if (urls.length > 1) {
+        setStage("comparison");
+        setProgress(95);
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
 
       setProgress(100);
       setStatus("complete");
+      setStage("complete");
       setInsights(data.insights);
       setAnalysisId(data.analysisId || null);
 
@@ -261,6 +291,9 @@ const Index = () => {
             currentUrl={currentUrl}
             progress={progress}
             status={status}
+            stage={stage}
+            totalUrls={totalUrls}
+            currentUrlIndex={currentUrlIndex}
           />
         )}
 
