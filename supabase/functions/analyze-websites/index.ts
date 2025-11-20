@@ -394,6 +394,7 @@ serve(async (req) => {
           "facebook.com",
           "vercel.app", // Next.js/React apps on Vercel
           "netlify.app", // React/Vue apps on Netlify
+          "sciencedirect.com", // Academic publisher with anti-bot protection
         ];
         const shouldUseBrowser = jsHeavyDomains.some(domain => url.includes(domain));
 
