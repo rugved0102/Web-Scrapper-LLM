@@ -136,9 +136,6 @@ export const SearchInsideWebsite = ({ analysisId }: SearchInsideWebsiteProps) =>
                                     Source {idx + 1}
                                     <ExternalLink className="h-3 w-3" />
                                   </a>
-                                  <span className="text-xs text-muted-foreground">
-                                    {Math.round(source.similarity * 100)}% relevant
-                                  </span>
                                 </div>
                                 <p className="text-sm text-muted-foreground italic">
                                   "{source.chunk}"
