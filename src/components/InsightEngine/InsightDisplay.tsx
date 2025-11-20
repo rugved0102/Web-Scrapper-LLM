@@ -46,6 +46,7 @@ export interface InsightData {
   recommendations: string[];
   domain_specific_insights?: string[];
   comparison?: ComparisonData;
+  languages?: string[]; // Detected languages from analyzed URLs
 }
 
 interface InsightDisplayProps {
@@ -54,9 +55,41 @@ interface InsightDisplayProps {
   analysisId?: string;
 }
 
+// Language code to name mapping
+const languageNames: Record<string, string> = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  ru: "Russian",
+  ja: "Japanese",
+  zh: "Chinese",
+  ko: "Korean",
+  ar: "Arabic",
+  hi: "Hindi",
+  nl: "Dutch",
+  pl: "Polish",
+  tr: "Turkish",
+  unknown: "Unknown"
+};
+
 export const InsightDisplay = ({ insights, purpose, analysisId }: InsightDisplayProps) => {
   return (
     <div>
+    {/* Language badges */}
+    {insights.languages && insights.languages.length > 0 && (
+      <div className="mb-4 flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-muted-foreground">Detected Languages:</span>
+        {insights.languages.map((lang, idx) => (
+          <Badge key={idx} variant="secondary" className="text-xs">
+            🌐 {languageNames[lang] || lang}
+          </Badge>
+        ))}
+      </div>
+    )}
+    
     <Accordion type="multiple" defaultValue={["summary"]} className="space-y-3">
       {/* TLDR Section - Open by default */}
       <AccordionItem value="summary" className="border border-border rounded-lg sm:rounded-xl bg-card shadow-sm overflow-hidden">

@@ -39,6 +39,7 @@ interface InsightResponse {
   recommendations: string[];
   domain_specific_insights: string[];
   comparison?: ComparisonData;
+  languages?: string[];
 }
 
 // Simple text chunking function
@@ -51,6 +52,62 @@ function chunkText(text: string, chunkSize: number = 500): string[] {
   }
   
   return chunks.filter(chunk => chunk.trim().length > 0);
+}
+
+// Detect language from HTML or content using multiple strategies
+function detectLanguage(html: string, textContent: string): string {
+  // Strategy 1: Check HTML lang attribute
+  const htmlLangMatch = html.match(/<html[^>]+lang=["']?([a-z]{2}(-[A-Z]{2})?)/i);
+  if (htmlLangMatch) {
+    return htmlLangMatch[1].toLowerCase().split('-')[0]; // Return ISO 639-1 code
+  }
+  
+  // Strategy 2: Check meta tags
+  const metaLangMatch = html.match(/<meta[^>]+http-equiv=["']?content-language["']?[^>]+content=["']?([a-z]{2})/i);
+  if (metaLangMatch) {
+    return metaLangMatch[1].toLowerCase();
+  }
+  
+  const metaLangMatch2 = html.match(/<meta[^>]+content=["']?([a-z]{2})["']?[^>]+http-equiv=["']?content-language/i);
+  if (metaLangMatch2) {
+    return metaLangMatch2[1].toLowerCase();
+  }
+  
+  // Strategy 3: Check og:locale meta tag
+  const ogLocaleMatch = html.match(/<meta[^>]+property=["']?og:locale["']?[^>]+content=["']?([a-z]{2})/i);
+  if (ogLocaleMatch) {
+    return ogLocaleMatch[1].toLowerCase();
+  }
+  
+  // Strategy 4: Simple heuristic based on common words (fallback)
+  const lowerContent = textContent.toLowerCase();
+  
+  // English indicators
+  const englishWords = ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'with', 'that', 'this'];
+  const englishCount = englishWords.filter(word => lowerContent.includes(` ${word} `)).length;
+  
+  // Spanish indicators
+  const spanishWords = ['el', 'la', 'de', 'en', 'los', 'las', 'del', 'para', 'con', 'por'];
+  const spanishCount = spanishWords.filter(word => lowerContent.includes(` ${word} `)).length;
+  
+  // French indicators
+  const frenchWords = ['le', 'la', 'les', 'de', 'et', 'des', 'dans', 'pour', 'avec', 'sur'];
+  const frenchCount = frenchWords.filter(word => lowerContent.includes(` ${word} `)).length;
+  
+  // German indicators
+  const germanWords = ['der', 'die', 'das', 'und', 'den', 'ein', 'eine', 'ist', 'mit', 'auf'];
+  const germanCount = germanWords.filter(word => lowerContent.includes(` ${word} `)).length;
+  
+  const maxCount = Math.max(englishCount, spanishCount, frenchCount, germanCount);
+  
+  if (maxCount === 0) return 'en'; // Default to English if no indicators found
+  
+  if (englishCount === maxCount) return 'en';
+  if (spanishCount === maxCount) return 'es';
+  if (frenchCount === maxCount) return 'fr';
+  if (germanCount === maxCount) return 'de';
+  
+  return 'en'; // Default
 }
 
 // Generate embeddings using Xenova transformers (better quality)
@@ -395,7 +452,7 @@ serve(async (req) => {
     }
 
     // Scrape all websites
-    const scrapedData: { url: string; content: string; title: string }[] = [];
+    const scrapedData: { url: string; content: string; title: string; language: string }[] = [];
     
     for (const url of urls) {
       try {
@@ -462,6 +519,7 @@ serve(async (req) => {
                   url,
                   content: `Failed to fetch website (Status: ${response.status}). This might be due to access restrictions, rate limiting, or the site blocking automated requests. Consider enabling browser scraping with BROWSERLESS_API_KEY for better results.`,
                   title: `Error fetching ${new URL(url).hostname}`,
+                  language: 'unknown',
                 });
                 continue;
               }
@@ -470,6 +528,7 @@ serve(async (req) => {
                 url,
                 content: `Failed to fetch website (Status: ${response.status}). This might be due to access restrictions, rate limiting, or the site blocking automated requests.`,
                 title: `Error fetching ${new URL(url).hostname}`,
+                language: 'unknown',
               });
               continue;
             }
@@ -524,12 +583,16 @@ serve(async (req) => {
         // Limit content length but keep it reasonable
         const finalContent = textContent.slice(0, 10000);
         
-        console.log(`Extracted ${finalContent.length} characters from ${url} ${usedBrowser ? '(via browser)' : '(via HTTP)'}`);
+        // Detect language
+        const detectedLanguage = detectLanguage(html, textContent);
+        
+        console.log(`Extracted ${finalContent.length} characters from ${url} ${usedBrowser ? '(via browser)' : '(via HTTP)'} [Language: ${detectedLanguage}]`);
 
         scrapedData.push({
           url,
           content: finalContent,
           title: pageTitle,
+          language: detectedLanguage,
         });
       } catch (error) {
         console.error(`Error scraping ${url}:`, error);
@@ -538,6 +601,7 @@ serve(async (req) => {
           url,
           content: `Error occurred while scraping: ${errorMessage}. The website may be blocking automated requests or may have connectivity issues.`,
           title: `Error: ${new URL(url).hostname}`,
+          language: 'unknown',
         });
       }
     }
@@ -694,6 +758,7 @@ Generate a detailed comparison in JSON format:
               analysis_id: analysisId,
               url: scraped.url,
               content: scraped.content,
+              language: scraped.language,
             })
             .select()
             .single();
@@ -741,6 +806,14 @@ Generate a detailed comparison in JSON format:
       }
     })();
 
+    // Extract unique languages from scraped data
+    const languages = [...new Set(scrapedData.map(s => s.language).filter(l => l !== 'unknown'))];
+    
+    // Add languages to insights
+    if (languages.length > 0) {
+      insights.languages = languages;
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -748,6 +821,7 @@ Generate a detailed comparison in JSON format:
         analysisId,
         analyzed_urls: scrapedData.length,
         provider: LLM_PROVIDER,
+        languages,
       }),
       { 
         status: 200, 
