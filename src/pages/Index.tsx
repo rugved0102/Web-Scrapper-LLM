@@ -62,6 +62,7 @@ const Index = () => {
         result: result as any,
         purpose,
         domain,
+        comparison: result.comparison || null,
         starred: false,
         tags: [],
       }]);

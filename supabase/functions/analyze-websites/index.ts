@@ -13,6 +13,23 @@ interface AnalysisRequest {
   domain?: string;
 }
 
+interface SiteComparison {
+  url: string;
+  title: string;
+  strengths: string[];
+  weaknesses: string[];
+  unique_features: string[];
+}
+
+interface ComparisonData {
+  summary: string;
+  similarities: string[];
+  differences: string[];
+  site_comparisons: SiteComparison[];
+  winner?: string;
+  winner_reasoning?: string;
+}
+
 interface InsightResponse {
   tldr: string;
   key_points: string[];
@@ -21,6 +38,7 @@ interface InsightResponse {
   opportunities_or_gaps: string[];
   recommendations: string[];
   domain_specific_insights: string[];
+  comparison?: ComparisonData;
 }
 
 // Simple text chunking function
@@ -588,6 +606,60 @@ Output in JSON format:
         insights = generateMockInsights(scrapedData, purpose);
         const errorMessage = error instanceof Error ? error.message : String(error);
         insights.recommendations.unshift(`Error occurred: ${errorMessage}`);
+      }
+    }
+
+    // Generate comparison if multiple URLs
+    if (scrapedData.length > 1) {
+      console.log(`Generating comparison for ${scrapedData.length} sites...`);
+      try {
+        const comparisonPrompt = `${systemPrompt}
+
+You are comparing ${scrapedData.length} different websites. Analyze the content and provide a structured comparison.
+
+${consolidatedContent}
+
+Generate a detailed comparison in JSON format:
+{
+  "summary": "One sentence overview of the comparison",
+  "similarities": ["Common themes, features, or approaches across all sites"],
+  "differences": ["Key differences in content, quality, approach, or focus"],
+  "site_comparisons": [
+    {
+      "url": "full URL",
+      "title": "site title from content above",
+      "strengths": ["What this site does better than others"],
+      "weaknesses": ["Where this site falls short compared to others"],
+      "unique_features": ["What makes this site stand out or unique"]
+    }
+  ],
+  "winner": "URL of the best overall site (optional)",
+  "winner_reasoning": "Explanation of why this site is recommended (if winner specified)"
+}`;
+
+        if (LLM_PROVIDER === "mock") {
+          insights.comparison = {
+            summary: `Mock comparison of ${scrapedData.length} websites`,
+            similarities: ["All sites provide information on the topic"],
+            differences: ["Sites differ in depth and presentation style"],
+            site_comparisons: scrapedData.map(s => ({
+              url: s.url,
+              title: s.title,
+              strengths: ["Mock strength"],
+              weaknesses: ["Mock weakness"],
+              unique_features: ["Mock unique feature"]
+            })),
+            winner: scrapedData[0].url,
+            winner_reasoning: "Mock winner selection"
+          };
+        } else {
+          const comparison = await callLLM(systemPrompt, comparisonPrompt);
+          insights.comparison = comparison as any;
+        }
+        console.log("Comparison generated successfully");
+      } catch (error) {
+        console.error("Failed to generate comparison:", error);
+        // Don't fail the whole request if comparison fails
       }
     }
 
