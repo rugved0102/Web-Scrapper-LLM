@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, Search, ChevronDown, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Loader2, Search, ChevronDown, ExternalLink, CheckCircle2 } from "lucide-react";
 import { invokeFunctionLocally } from "@/lib/localFunctions";
 import { toast } from "sonner";
 
@@ -13,7 +15,10 @@ interface SearchResult {
     url: string;
     chunk: string;
     similarity: number;
+    chunkId?: string;
+    confidence: number;
   }[];
+  citedSources?: number[];
 }
 
 interface SearchInsideWebsiteProps {
@@ -56,6 +61,55 @@ export const SearchInsideWebsite = ({ analysisId }: SearchInsideWebsiteProps) =>
     if (e.key === "Enter" && !loading) {
       handleSearch();
     }
+  };
+
+  const renderAnswerWithCitations = (answer: string, sources: SearchResult['sources']) => {
+    // Split answer by citation markers [1], [2], etc.
+    const parts = answer.split(/(\[\d+\])/);
+    
+    return (
+      <TooltipProvider>
+        <p className="text-muted-foreground leading-relaxed">
+          {parts.map((part, idx) => {
+            // Check if this part is a citation marker like [1]
+            const citationMatch = part.match(/\[(\d+)\]/);
+            if (citationMatch) {
+              const sourceNum = parseInt(citationMatch[1]) - 1;
+              const source = sources[sourceNum];
+              
+              if (source) {
+                return (
+                  <Tooltip key={idx}>
+                    <TooltipTrigger asChild>
+                      <sup className="cursor-help mx-0.5">
+                        <a
+                          href={`#source-${sourceNum}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            document.getElementById(`source-${sourceNum}`)?.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          className="text-primary hover:underline font-semibold text-sm"
+                        >
+                          {part}
+                        </a>
+                      </sup>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      <p className="text-xs mb-1 font-semibold">{source.url}</p>
+                      <p className="text-xs italic">{source.chunk.slice(0, 150)}...</p>
+                      <Badge variant="secondary" className="mt-1 text-xs">
+                        {source.confidence}% confidence
+                      </Badge>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+            }
+            return <span key={idx}>{part}</span>;
+          })}
+        </p>
+      </TooltipProvider>
+    );
   };
 
   return (
@@ -117,35 +171,69 @@ export const SearchInsideWebsite = ({ analysisId }: SearchInsideWebsiteProps) =>
                   <div className="space-y-4">
                     <div>
                       <h4 className="font-semibold mb-2 text-foreground">Answer:</h4>
-                      <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                        {result.answer}
-                      </p>
+                      {renderAnswerWithCitations(result.answer, result.sources)}
                     </div>
 
                     {result.sources && result.sources.length > 0 && (
                       <div>
-                        <h4 className="font-semibold mb-3 text-foreground">Sources:</h4>
+                        <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                          Sources:
+                          {result.citedSources && result.citedSources.length > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              {result.citedSources.length} cited
+                            </Badge>
+                          )}
+                        </h4>
                         <div className="space-y-3">
-                          {result.sources.map((source, idx) => (
-                            <Card key={idx} className="bg-muted/30">
-                              <CardContent className="pt-4">
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <a
-                                    href={source.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm text-primary hover:underline flex items-center gap-1 font-medium"
-                                  >
-                                    Source {idx + 1}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                </div>
-                                <p className="text-sm text-muted-foreground italic">
-                                  "{source.chunk}"
-                                </p>
-                              </CardContent>
-                            </Card>
-                          ))}
+                          {result.sources.map((source, idx) => {
+                            const isCited = result.citedSources?.includes(idx + 1);
+                            return (
+                              <Card 
+                                key={idx} 
+                                id={`source-${idx}`}
+                                className={`${
+                                  isCited 
+                                    ? 'bg-primary/5 border-primary/30' 
+                                    : 'bg-muted/30'
+                                }`}
+                              >
+                                <CardContent className="pt-4">
+                                  <div className="flex items-start justify-between gap-2 mb-2">
+                                    <div className="flex items-center gap-2 flex-1">
+                                      <a
+                                        href={source.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-primary hover:underline flex items-center gap-1 font-medium"
+                                      >
+                                        [{idx + 1}] Source
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                      {isCited && (
+                                        <Tooltip>
+                                          <TooltipTrigger>
+                                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p className="text-xs">Cited in answer</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      )}
+                                    </div>
+                                    <Badge 
+                                      variant={source.confidence >= 70 ? "default" : "secondary"}
+                                      className="text-xs"
+                                    >
+                                      {source.confidence}%
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground italic">
+                                    "{source.chunk}"
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

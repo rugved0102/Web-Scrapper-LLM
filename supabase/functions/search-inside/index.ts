@@ -17,7 +17,10 @@ interface SearchResult {
     url: string;
     chunk: string;
     similarity: number;
+    chunkId?: string;
+    confidence: number;
   }[];
+  citedSources?: number[];
 }
 
 // Simple text chunking function
@@ -166,7 +169,7 @@ serve(async (req) => {
     const contentIds = contentData.map(c => c.id);
     const { data: embeddings, error: embError } = await supabase
       .from("content_embeddings")
-      .select("chunk_text, embedding, analysis_content_id")
+      .select("id, chunk_text, embedding, analysis_content_id")
       .in("analysis_content_id", contentIds);
 
     if (embError || !embeddings || embeddings.length === 0) {
@@ -184,17 +187,19 @@ serve(async (req) => {
         const content = contentData.find(c => c.id === emb.analysis_content_id);
         const similarity = cosineSimilarity(queryEmbedding, emb.embedding as number[]);
         return {
+          chunkId: emb.id,
           chunk: emb.chunk_text,
           url: content?.url || "",
           similarity,
+          confidence: Math.round(similarity * 100),
         };
       })
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, 5);
 
-    // Prepare context for LLM
+    // Prepare context for LLM with citation markers
     const context = rankedChunks
-      .map((chunk, idx) => `[Source ${idx + 1} - ${chunk.url}]\n${chunk.chunk}`)
+      .map((chunk, idx) => `[Source ${idx + 1} - ${chunk.url} (Confidence: ${chunk.confidence}%)]\n${chunk.chunk}`)
       .join("\n\n---\n\n");
 
     // Call Groq for answer generation
@@ -219,7 +224,8 @@ serve(async (req) => {
             role: "system",
             content: `You are a helpful assistant that answers questions based strictly on the provided website content. 
 Only use information from the context provided. If the answer is not in the context, say so.
-Be concise and cite which source number you're using.`,
+Be concise and ALWAYS cite your sources using [1], [2], [3] etc. inline where you use information from each source.
+Example: "The product costs $99 [1] and includes free shipping [2]."`,
           },
           {
             role: "user",
@@ -243,13 +249,24 @@ Be concise and cite which source number you're using.`,
     const groqData = await groqResponse.json();
     const answer = groqData.choices[0]?.message?.content || "No answer generated";
 
+    // Extract which sources were cited in the answer
+    const citedSources: number[] = [];
+    for (let i = 1; i <= rankedChunks.length; i++) {
+      if (answer.includes(`[${i}]`)) {
+        citedSources.push(i);
+      }
+    }
+
     const result: SearchResult = {
       answer,
       sources: rankedChunks.map(chunk => ({
+        chunkId: chunk.chunkId,
         url: chunk.url,
-        chunk: chunk.chunk.slice(0, 200) + "...",
+        chunk: chunk.chunk.slice(0, 300) + "...",
         similarity: Math.round(chunk.similarity * 100) / 100,
+        confidence: chunk.confidence,
       })),
+      citedSources: citedSources.length > 0 ? citedSources : undefined,
     };
 
     console.log("Search complete");
