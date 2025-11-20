@@ -557,7 +557,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
 
       {/* History List */}
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="p-2 pr-4 space-y-1">
           {loading ? (
             <div className="text-sm text-muted-foreground text-center py-8">
               Loading...
@@ -576,7 +576,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
               <div
                 key={item.id}
                 onClick={() => onSelectHistory(item)}
-                className="group relative p-2.5 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                className="group relative p-2.5 pr-2 rounded-lg hover:bg-muted cursor-pointer transition-colors"
               >
                 {editingId === item.id ? (
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -636,12 +636,12 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleStartEdit(item, e)}
-                        className="h-7 w-7"
+                        className="h-7 w-7 hover:bg-accent"
                         title="Rename"
                       >
                         <Pencil className="h-3 w-3" />
@@ -650,7 +650,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleToggleStar(item.id, item.starred || false, e)}
-                        className="h-7 w-7"
+                        className="h-7 w-7 hover:bg-accent"
                         title={item.starred ? "Unstar" : "Star"}
                       >
                         <Star
@@ -665,7 +665,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleToggleArchive(item.id, item.archived || false, e)}
-                        className="h-7 w-7"
+                        className="h-7 w-7 hover:bg-accent"
                         title={item.archived ? "Unarchive" : "Archive"}
                       >
                         <Archive
@@ -680,7 +680,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleDelete(item.id, e)}
-                        className="h-7 w-7"
+                        className="h-7 w-7 hover:bg-accent"
                         title="Delete"
                       >
                         <Trash2 className="h-3 w-3" />
