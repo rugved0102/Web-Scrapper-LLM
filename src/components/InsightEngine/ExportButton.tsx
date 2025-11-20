@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, FileCode, BookOpen, Database } from "lucide-react";
 import { InsightData } from "./InsightDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { exportAsCSV, exportAsEnhancedText } from "@/lib/exportUtils";
@@ -219,21 +219,26 @@ export const ExportButton = ({ insights, purpose }: ExportButtonProps) => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44 sm:w-48">
-        <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer text-xs sm:text-sm">
-          📊 Export as CSV
+        <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer text-xs sm:text-sm gap-2">
+          <FileSpreadsheet className="h-4 w-4" />
+          Export as CSV
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportAsPDF} className="cursor-pointer text-xs sm:text-sm">
-          📄 Export as PDF
+        <DropdownMenuItem onClick={exportAsPDF} className="cursor-pointer text-xs sm:text-sm gap-2">
+          <FileText className="h-4 w-4" />
+          Export as PDF
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportAsText} className="cursor-pointer text-xs sm:text-sm">
-          📝 Export as Text
+        <DropdownMenuItem onClick={exportAsText} className="cursor-pointer text-xs sm:text-sm gap-2">
+          <FileCode className="h-4 w-4" />
+          Export as Text
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={exportAsMarkdown} className="cursor-pointer text-xs sm:text-sm">
-          📋 Export as Markdown
+        <DropdownMenuItem onClick={exportAsMarkdown} className="cursor-pointer text-xs sm:text-sm gap-2">
+          <BookOpen className="h-4 w-4" />
+          Export as Markdown
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportAsJSON} className="cursor-pointer text-xs sm:text-sm">
-          💾 Export as JSON
+        <DropdownMenuItem onClick={exportAsJSON} className="cursor-pointer text-xs sm:text-sm gap-2">
+          <Database className="h-4 w-4" />
+          Export as JSON
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
