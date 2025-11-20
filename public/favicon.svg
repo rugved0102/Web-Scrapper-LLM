@@ -1,16 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:1" />
-    </linearGradient>
-  </defs>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #ffffff; }
+      .brain { stroke: #000000; }
+    }
+    @media (prefers-color-scheme: light) {
+      .bg { fill: #000000; }
+      .brain { stroke: #ffffff; }
+    }
+  </style>
   
   <!-- Background circle -->
-  <circle cx="50" cy="50" r="45" fill="url(#grad)"/>
+  <circle cx="50" cy="50" r="45" class="bg"/>
   
   <!-- Brain icon (scaled from lucide-react Brain icon) -->
-  <g transform="translate(50, 50) scale(2.5)" stroke="white" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(50, 50) scale(2.5)" class="brain" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <!-- Left brain hemisphere -->
     <path d="M 0 -8 a 3 3 0 1 0 -6 0.125 a 4 4 0 0 0 -2.5 5.77 a 4 4 0 0 0 0.556 6.588 A 4 4 0 1 0 0 6.5 Z"/>
     
