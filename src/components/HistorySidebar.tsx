@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { 
   Brain, Plus, LogOut, Trash2, ChevronLeft, ChevronRight, 
-  Search, Star, SortAsc, Filter, Pencil, Check, X,
+  Search, Star, SortAsc, Filter, Pencil, Check, X, Archive,
   Briefcase, FlaskConical, Target, TrendingUp, Lightbulb, Globe
 } from "lucide-react";
 import {
@@ -29,6 +29,7 @@ interface HistoryItem {
   result: InsightData;
   purpose: PurposeMode;
   starred?: boolean;
+  archived?: boolean;
   tags?: string[];
   created_at: string;
   updated_at?: string;
@@ -47,6 +48,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
   const [sortBy, setSortBy] = useState<"date" | "starred">("date");
   const [filterPurpose, setFilterPurpose] = useState<string>("all");
   const [showStarredOnly, setShowStarredOnly] = useState(false);
+  const [showArchivedOnly, setShowArchivedOnly] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const { user } = useAuth();
@@ -123,6 +125,14 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
       filtered = filtered.filter((item) => item.starred);
     }
 
+    // Archived filter
+    if (showArchivedOnly) {
+      filtered = filtered.filter((item) => item.archived);
+    } else {
+      // By default, hide archived items unless explicitly showing them
+      filtered = filtered.filter((item) => !item.archived);
+    }
+
     // Sort
     filtered.sort((a, b) => {
       if (sortBy === "starred") {
@@ -167,6 +177,41 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
       });
     } catch (error) {
       console.error("Failed to toggle star:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update. Make sure the database migration is applied.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Toggle archive
+  const handleToggleArchive = async (id: string, currentArchived: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    try {
+      const { error } = await supabase
+        .from("analysis_history")
+        .update({ archived: !currentArchived })
+        .eq("id", id);
+
+      if (error) {
+        console.error("Archive error:", error);
+        throw error;
+      }
+
+      setHistory((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, archived: !currentArchived } : item
+        )
+      );
+
+      toast({
+        title: !currentArchived ? "Archived" : "Unarchived",
+        description: !currentArchived ? "Moved to archive" : "Restored from archive",
+      });
+    } catch (error) {
+      console.error("Failed to toggle archive:", error);
       toast({
         title: "Error",
         description: "Failed to update. Make sure the database migration is applied.",
@@ -414,6 +459,17 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
             >
               <Star className={`h-4 w-4 ${showStarredOnly ? "fill-current" : ""}`} />
             </Button>
+
+            {/* Archive Filter */}
+            <Button
+              variant={showArchivedOnly ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setShowArchivedOnly(!showArchivedOnly)}
+              title="Show archived only"
+            >
+              <Archive className={`h-4 w-4 ${showArchivedOnly ? "fill-current" : ""}`} />
+            </Button>
           </div>
         </div>
       </div>
@@ -429,7 +485,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
             <div className="text-center py-8">
               <Brain className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">
-                {searchQuery || filterPurpose !== "all" || showStarredOnly
+                {searchQuery || filterPurpose !== "all" || showStarredOnly || showArchivedOnly
                   ? "No results found"
                   : "No history yet"}
               </p>
@@ -520,6 +576,21 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
                           className={`h-3 w-3 ${
                             item.starred
                               ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleToggleArchive(item.id, item.archived || false, e)}
+                        className="h-7 w-7"
+                        title={item.archived ? "Unarchive" : "Archive"}
+                      >
+                        <Archive
+                          className={`h-3 w-3 ${
+                            item.archived
+                              ? "text-blue-500"
                               : "text-muted-foreground"
                           }`}
                         />
