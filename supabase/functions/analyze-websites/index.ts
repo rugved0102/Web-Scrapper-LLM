@@ -298,6 +298,49 @@ serve(async (req) => {
 
     console.log(`Analyzing ${urls.length} URLs with purpose: ${purpose}`);
 
+    // Helper function to scrape with headless browser (for JS-heavy sites)
+    async function scrapeWithBrowser(url: string): Promise<{ html: string; title: string } | null> {
+      const BROWSERLESS_API_KEY = Deno.env.get("BROWSERLESS_API_KEY");
+      
+      if (!BROWSERLESS_API_KEY) {
+        console.log("BROWSERLESS_API_KEY not set, skipping browser scraping");
+        return null;
+      }
+
+      try {
+        console.log(`Attempting browser scraping for: ${url}`);
+        
+        const response = await fetch(`https://chrome.browserless.io/content?token=${BROWSERLESS_API_KEY}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: url,
+            waitFor: 2000, // Wait 2 seconds for JS to load
+            gotoOptions: {
+              waitUntil: "networkidle2",
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          console.error(`Browserless failed for ${url}: ${response.status}`);
+          return null;
+        }
+
+        const html = await response.text();
+        
+        // Extract title from rendered HTML
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const title = titleMatch ? titleMatch[1].trim() : new URL(url).hostname;
+        
+        console.log(`Successfully scraped ${url} with browser (${html.length} chars)`);
+        return { html, title };
+      } catch (error) {
+        console.error(`Browser scraping error for ${url}:`, error);
+        return null;
+      }
+    }
+
     // Scrape all websites
     const scrapedData: { url: string; content: string; title: string }[] = [];
     
@@ -305,34 +348,77 @@ serve(async (req) => {
       try {
         console.log(`Fetching: ${url}`);
         
-        // Enhanced headers to mimic real browser
-        const response = await fetch(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "DNT": "1",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-          },
-        });
-        
-        if (!response.ok) {
-          console.error(`Failed to fetch ${url}: ${response.status}`);
-          scrapedData.push({
-            url,
-            content: `Failed to fetch website (Status: ${response.status}). This might be due to access restrictions, rate limiting, or the site blocking automated requests.`,
-            title: `Error fetching ${new URL(url).hostname}`,
-          });
-          continue;
+        let html = "";
+        let pageTitle = "";
+        let usedBrowser = false;
+
+        // Try browser scraping first for known JS-heavy domains
+        const jsHeavyDomains = ["reddit.com", "twitter.com", "x.com", "instagram.com", "facebook.com"];
+        const shouldUseBrowser = jsHeavyDomains.some(domain => url.includes(domain));
+
+        if (shouldUseBrowser) {
+          console.log(`Detected JS-heavy site, trying browser scraping first...`);
+          const browserResult = await scrapeWithBrowser(url);
+          
+          if (browserResult) {
+            html = browserResult.html;
+            pageTitle = browserResult.title;
+            usedBrowser = true;
+          } else {
+            console.log(`Browser scraping failed, falling back to HTTP fetch...`);
+          }
         }
 
-        const html = await response.text();
-        
-        // Extract title first
-        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        const title = titleMatch ? titleMatch[1].trim() : new URL(url).hostname;
+        // Fallback to regular HTTP fetch if browser not used or failed
+        if (!usedBrowser) {
+          const response = await fetch(url, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+              "Accept-Language": "en-US,en;q=0.9",
+              "Accept-Encoding": "gzip, deflate, br",
+              "DNT": "1",
+              "Connection": "keep-alive",
+              "Upgrade-Insecure-Requests": "1",
+            },
+          });
+          
+          if (!response.ok) {
+            console.error(`Failed to fetch ${url}: ${response.status}`);
+            
+            // Try browser as last resort for 403/401 errors
+            if ((response.status === 403 || response.status === 401) && !shouldUseBrowser) {
+              console.log(`Got ${response.status}, attempting browser scraping as fallback...`);
+              const browserResult = await scrapeWithBrowser(url);
+              
+              if (browserResult) {
+                html = browserResult.html;
+                pageTitle = browserResult.title;
+                usedBrowser = true;
+              } else {
+                scrapedData.push({
+                  url,
+                  content: `Failed to fetch website (Status: ${response.status}). This might be due to access restrictions, rate limiting, or the site blocking automated requests. Consider enabling browser scraping with BROWSERLESS_API_KEY for better results.`,
+                  title: `Error fetching ${new URL(url).hostname}`,
+                });
+                continue;
+              }
+            } else {
+              scrapedData.push({
+                url,
+                content: `Failed to fetch website (Status: ${response.status}). This might be due to access restrictions, rate limiting, or the site blocking automated requests.`,
+                title: `Error fetching ${new URL(url).hostname}`,
+              });
+              continue;
+            }
+          }
+          
+          if (!usedBrowser) {
+            html = await response.text();
+            const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+            pageTitle = titleMatch ? titleMatch[1].trim() : new URL(url).hostname;
+          }
+        }
 
         // Improved content extraction
         let textContent = html
@@ -369,19 +455,19 @@ serve(async (req) => {
             .trim();
           
           if (textContent.length < 200) {
-            textContent = `Limited content extracted from ${url}. This website may require JavaScript to display its content, which cannot be executed in this scraper. Consider using sites with static HTML content for best results. Extracted title: "${title}"`;
+            textContent = `Limited content extracted from ${url}. This website may require JavaScript to display its content, which cannot be executed in this scraper. Consider using sites with static HTML content for best results. Extracted title: "${pageTitle}"`;
           }
         }
 
         // Limit content length but keep it reasonable
         const finalContent = textContent.slice(0, 10000);
         
-        console.log(`Extracted ${finalContent.length} characters from ${url}`);
+        console.log(`Extracted ${finalContent.length} characters from ${url} ${usedBrowser ? '(via browser)' : '(via HTTP)'}`);
 
         scrapedData.push({
           url,
           content: finalContent,
-          title,
+          title: pageTitle,
         });
       } catch (error) {
         console.error(`Error scraping ${url}:`, error);

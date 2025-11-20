@@ -212,6 +212,49 @@ You can choose from several models by setting `GROQ_MODEL` in your `.env`:
 
 ---
 
+### Browserless.io Setup (Optional - For JavaScript-Heavy Sites)
+
+**Browserless.io enables scraping of Reddit, Twitter/X, Instagram, and other modern JavaScript-heavy websites.**
+
+#### Why Use Browserless.io?
+
+Modern websites like Reddit use JavaScript frameworks (React, Vue) that don't render content in the initial HTML. A headless browser is needed to execute JavaScript and get the actual content.
+
+#### Free Tier Includes:
+- **6 hours/month** of browser time
+- Perfect for occasional scraping of JS-heavy sites
+- No credit card required
+
+#### How to Get Your Browserless.io API Key:
+
+1. Visit [https://www.browserless.io](https://www.browserless.io)
+2. Click **Start for Free**
+3. Sign up for a free account
+4. Navigate to **Account → API Keys**
+5. Copy your API token
+6. Paste it into your `.env` file as `BROWSERLESS_API_KEY`
+
+#### What Happens When Enabled?
+
+The scraper will automatically use browser-based scraping for:
+- ✅ Reddit (reddit.com)
+- ✅ Twitter/X (twitter.com, x.com)
+- ✅ Instagram (instagram.com)
+- ✅ Facebook (facebook.com)
+- ✅ Other detected JS-heavy sites
+
+If Browserless fails or isn't configured, it falls back to standard HTTP scraping.
+
+#### Cost Monitoring:
+
+Check your usage at [https://www.browserless.io/account](https://www.browserless.io/account)
+- Each site scrape uses ~5-15 seconds of browser time
+- 6 hours = 1,440-2,880 page scrapes per month
+
+**Note:** If you exceed the free tier, Browserless will simply stop working and the scraper will fall back to HTTP mode.
+
+---
+
 ### Running Without API Keys (Mock Mode)
 
 You can test the entire application flow **without any API keys** using mock mode:
@@ -280,6 +323,9 @@ supabase link --project-ref xxrhqvocwwpukxiidazn
 supabase secrets set GROQ_API_KEY=gsk_your_actual_key_here
 supabase secrets set LLM_PROVIDER=groq
 supabase secrets set GROQ_MODEL=llama3-8b-8192
+
+# Optional: Enable browser scraping for Reddit, Twitter, etc.
+supabase secrets set BROWSERLESS_API_KEY=your_browserless_token_here
 ```
 
 **Note:** You can also set secrets in the Supabase Dashboard under Project Settings → Edge Functions.
@@ -916,14 +962,23 @@ supabase functions deploy analyze-websites
 **A**: There's no hard limit, but we recommend 3-5 URLs for optimal performance and reasonable processing time.
 
 ### Q: What types of websites work best?
-**A**: **Static HTML websites** work best, including:
+**A**: **All websites are supported with the right configuration:**
+
+**Without Browserless.io (Basic HTTP Scraping):**
 - ✅ Wikipedia and educational sites
 - ✅ News articles and blogs
 - ✅ Documentation sites
 - ✅ Business websites with static content
 - ✅ GitHub repositories
-- ⚠️ **Limited support** for JavaScript-heavy sites (Reddit, Twitter/X, modern SPAs)
-- ❌ Sites behind login walls or Cloudflare protection
+- ⚠️ Limited support for JavaScript-heavy sites
+
+**With Browserless.io (Browser-Based Scraping):**
+- ✅ **Reddit** - Full content access
+- ✅ **Twitter/X** - Tweets and threads
+- ✅ **Instagram** - Public posts
+- ✅ **Facebook** - Public pages
+- ✅ All static HTML sites (as above)
+- ❌ Sites behind login walls (still restricted)
 
 ### Q: Can I analyze websites in different languages?
 **A**: Yes! Gemini 2.5 Flash supports multiple languages. The insights will be generated in the language of the source content.
