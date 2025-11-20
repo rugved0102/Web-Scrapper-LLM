@@ -4,10 +4,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Download } from "lucide-react";
 import { InsightData } from "./InsightDisplay";
 import { useToast } from "@/hooks/use-toast";
+import { exportAsCSV, exportAsEnhancedText } from "@/lib/exportUtils";
 
 interface ExportButtonProps {
   insights: InsightData;
@@ -30,21 +32,7 @@ export const ExportButton = ({ insights, purpose }: ExportButtonProps) => {
   };
 
   const exportAsText = () => {
-    let text = `Analysis Purpose: ${purpose}\n\n`;
-    text += `SUMMARY\n${insights.tldr}\n\n`;
-    text += `KEY POINTS\n${insights.key_points.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\n`;
-    text += `DEEP INSIGHTS\n${insights.deep_insights.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\n`;
-    if (insights.conflicts_across_sources?.length) {
-      text += `CONFLICTS\n${insights.conflicts_across_sources.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\n`;
-    }
-    if (insights.opportunities_or_gaps?.length) {
-      text += `OPPORTUNITIES\n${insights.opportunities_or_gaps.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\n`;
-    }
-    text += `RECOMMENDATIONS\n${insights.recommendations.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n\n`;
-    if (insights.domain_specific_insights?.length) {
-      text += `DOMAIN INSIGHTS\n${insights.domain_specific_insights.map((p, i) => `${i + 1}. ${p}`).join("\n")}`;
-    }
-
+    const text = exportAsEnhancedText(insights, purpose);
     const dataBlob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
@@ -53,6 +41,18 @@ export const ExportButton = ({ insights, purpose }: ExportButtonProps) => {
     link.click();
     URL.revokeObjectURL(url);
     toast({ title: "Exported as Text", description: "File downloaded successfully" });
+  };
+
+  const handleExportCSV = () => {
+    const csv = exportAsCSV(insights, purpose);
+    const dataBlob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `insights-${purpose}-${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported as CSV", description: "File downloaded successfully" });
   };
 
   const exportAsMarkdown = () => {
@@ -90,15 +90,19 @@ export const ExportButton = ({ insights, purpose }: ExportButtonProps) => {
           <span className="hidden sm:inline">Export</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40 sm:w-44">
-        <DropdownMenuItem onClick={exportAsJSON} className="cursor-pointer text-xs sm:text-sm">
-          Export as JSON
+      <DropdownMenuContent align="end" className="w-44 sm:w-48">
+        <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer text-xs sm:text-sm">
+          Export as CSV
         </DropdownMenuItem>
         <DropdownMenuItem onClick={exportAsText} className="cursor-pointer text-xs sm:text-sm">
           Export as Text
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={exportAsMarkdown} className="cursor-pointer text-xs sm:text-sm">
           Export as Markdown
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={exportAsJSON} className="cursor-pointer text-xs sm:text-sm">
+          Export as JSON
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
