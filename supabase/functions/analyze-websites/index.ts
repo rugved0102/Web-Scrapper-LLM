@@ -310,32 +310,47 @@ serve(async (req) => {
       try {
         console.log(`Attempting browser scraping for: ${url}`);
         
-        // Enhanced configuration to bypass anti-bot detection
-        const response = await fetch(`https://chrome.browserless.io/content?token=${BROWSERLESS_API_KEY}`, {
+        // Enhanced configuration with stealth mode to bypass anti-bot detection
+        const response = await fetch(`https://chrome.browserless.io/content?token=${BROWSERLESS_API_KEY}&stealth`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             url: url,
-            waitFor: 3000, // Wait 3 seconds for JS to load
+            waitFor: 5000, // Wait 5 seconds for full page load
             gotoOptions: {
-              waitUntil: "networkidle2",
-              timeout: 30000,
+              waitUntil: "networkidle0", // Wait for no network activity
+              timeout: 45000,
             },
-            // Add realistic browser headers and settings
+            // Stealth mode headers to avoid detection
             setExtraHTTPHeaders: {
-              "Accept-Language": "en-US,en;q=0.9",
-              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+              "Accept-Language": "en-US,en;q=0.9,es;q=0.8",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
               "Accept-Encoding": "gzip, deflate, br",
-              "DNT": "1",
-              "Connection": "keep-alive",
+              "Cache-Control": "max-age=0",
+              "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+              "sec-ch-ua-mobile": "?0",
+              "sec-ch-ua-platform": '"Windows"',
+              "Sec-Fetch-Dest": "document",
+              "Sec-Fetch-Mode": "navigate",
+              "Sec-Fetch-Site": "none",
+              "Sec-Fetch-User": "?1",
               "Upgrade-Insecure-Requests": "1",
             },
-            // Emulate a real user
+            // Realistic viewport and device emulation
             viewport: {
               width: 1920,
               height: 1080,
+              deviceScaleFactor: 1,
             },
             userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            // Add cookies and other realistic browser behavior
+            addScriptTag: [{
+              content: `
+                Object.defineProperty(navigator, 'webdriver', {get: () => false});
+                Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+              `
+            }],
           }),
         });
 
