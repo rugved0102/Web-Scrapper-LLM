@@ -88,7 +88,7 @@ export const HistorySidebar = ({ onSelectHistory, onNewAnalysis }: HistorySideba
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("scheduled_tasks")
         .select("*")
         .eq("enabled", true)
