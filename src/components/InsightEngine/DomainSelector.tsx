@@ -25,7 +25,7 @@ export const DomainSelector = ({ value, onChange, disabled }: DomainSelectorProp
     <div className="space-y-2">
       <label className="text-sm font-medium text-foreground flex items-center gap-2">
         <Layers className="h-4 w-4" />
-        Website Type (Optional)
+        What Type of Website?
       </label>
       <Select value={value} onValueChange={(v) => onChange(v as DomainType)} disabled={disabled}>
         <SelectTrigger className="h-10">
@@ -43,7 +43,7 @@ export const DomainSelector = ({ value, onChange, disabled }: DomainSelectorProp
         </SelectContent>
       </Select>
       <p className="text-xs text-muted-foreground">
-        {domains.find(d => d.id === value)?.description || "Select a template for optimized analysis"}
+        {domains.find(d => d.id === value)?.description || "Helps extract specific data like prices, reviews, etc."}
       </p>
     </div>
   );

@@ -20,7 +20,7 @@ export const PurposeSelector = ({ value, onChange, disabled }: PurposeSelectorPr
     <div className="space-y-2">
       <label className="text-sm font-medium text-foreground flex items-center gap-2">
         <Target className="h-4 w-4" />
-        Analysis Purpose
+        What's Your Goal?
       </label>
       <Select value={value} onValueChange={(v) => onChange(v as PurposeMode)} disabled={disabled}>
         <SelectTrigger className="h-10">
@@ -35,6 +35,9 @@ export const PurposeSelector = ({ value, onChange, disabled }: PurposeSelectorPr
           <SelectItem value="general">General Information</SelectItem>
         </SelectContent>
       </Select>
+      <p className="text-xs text-muted-foreground">
+        Choose your analysis focus to get tailored insights
+      </p>
     </div>
   );
 };
