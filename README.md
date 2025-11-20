@@ -60,10 +60,12 @@ Choose from 6 different analysis modes:
 - 🌐 **General Analysis**: Comprehensive overview
 
 ### 3. **Intelligent Web Scraping**
-- Automated content extraction from any website
+- Automated content extraction from websites
+- Works best with static HTML sites (Wikipedia, news, blogs)
 - Handles various website structures
 - Extracts clean, readable text
 - Progress tracking during scraping
+- Graceful handling of JavaScript-heavy sites with informative warnings
 
 ### 4. **AI-Powered Insight Generation**
 - Uses Groq API with Llama 3.1 models
@@ -914,7 +916,14 @@ supabase functions deploy analyze-websites
 **A**: There's no hard limit, but we recommend 3-5 URLs for optimal performance and reasonable processing time.
 
 ### Q: What types of websites work best?
-**A**: Text-heavy websites like blogs, news articles, documentation, and business sites work best. Image-heavy or highly dynamic sites may have limited text extraction.
+**A**: **Static HTML websites** work best, including:
+- ✅ Wikipedia and educational sites
+- ✅ News articles and blogs
+- ✅ Documentation sites
+- ✅ Business websites with static content
+- ✅ GitHub repositories
+- ⚠️ **Limited support** for JavaScript-heavy sites (Reddit, Twitter/X, modern SPAs)
+- ❌ Sites behind login walls or Cloudflare protection
 
 ### Q: Can I analyze websites in different languages?
 **A**: Yes! Gemini 2.5 Flash supports multiple languages. The insights will be generated in the language of the source content.
