@@ -214,13 +214,20 @@ CREATE TRIGGER on_auth_user_created_notification_prefs
   FOR EACH ROW
   EXECUTE FUNCTION create_default_notification_preferences();
 
--- Add change tracking columns to scheduled_tasks
-ALTER TABLE scheduled_tasks 
-ADD COLUMN IF NOT EXISTS last_change_detected TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS changes_count INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS last_snapshot_id UUID REFERENCES analysis_snapshots(id) ON DELETE SET NULL;
-
--- Comment documentation
+-- Add change tracking columns to scheduled_tasks (if table exists)
+DO $$ 
+BEGIN
+  IF EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'scheduled_tasks'
+  ) THEN
+    ALTER TABLE scheduled_tasks
+    ADD COLUMN IF NOT EXISTS last_change_detected TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS changes_count INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS last_snapshot_id UUID REFERENCES analysis_snapshots(id) ON DELETE SET NULL;
+  END IF;
+END $$;-- Comment documentation
 COMMENT ON TABLE analysis_snapshots IS 'Stores each analysis result as a snapshot for change tracking';
 COMMENT ON TABLE detected_changes IS 'Records individual changes detected between snapshots';
 COMMENT ON TABLE change_alerts IS 'Queue for sending notifications about detected changes';
